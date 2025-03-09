@@ -10,7 +10,10 @@ const session = require('express-session');
 const path = require('path');
 const fs = require('fs');
 const multer = require('multer');
-require('dotenv').config();
+require('dotenv-safe').config({
+  allowEmptyValues: true,
+  example: '.env.example'
+});
 
 // Importar modelos de banco de dados
 const db = require('./db/database');
