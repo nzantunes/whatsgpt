@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WhatsGPT - Assistente Inteligente para WhatsApp</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+  <style>
+    body {
+      background-color: #f5f5f5;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      padding-bottom: 50px;
+    }
+    .hero-section {
+      background-color: #075e54;
+      color: white;
+      padding: 80px 0;
+      margin-bottom: 50px;
+    }
+    .card {
+      border-radius: 15px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+      margin-bottom: 30px;
+      overflow: hidden;
+      transition: transform 0.3s ease;
+      height: 100%;
+    }
+    .card:hover {
+      transform: translateY(-5px);
+    }
+    .card-header {
+      background-color: #075e54;
+      color: white;
+      font-weight: 600;
+      padding: 15px 20px;
+    }
+    .btn-success {
+      background-color: #075e54;
+      border-color: #075e54;
+    }
+    .btn-success:hover {
+      background-color: #064942;
+      border-color: #064942;
+    }
+    .feature-icon {
+      font-size: 2.5rem;
+      color: #075e54;
+      margin-bottom: 20px;
+      display: block;
+      text-align: center;
+    }
+    .notification-container {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 9999;
+    }
+    .notification {
+      background-color: white;
+      border-left: 4px solid #075e54;
+      padding: 15px 20px;
+      margin-bottom: 10px;
+      border-radius: 5px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+      display: flex;
+      align-items: center;
+      animation: slideIn 0.3s ease;
+    }
+    @keyframes slideIn {
+      from {
+        transform: translateX(100%);
+        opacity: 0;
+      }
+      to {
+        transform: translateX(0);
+        opacity: 1;
+      }
+    }
+    .auth-form {
+      max-width: 500px;
+      margin: 0 auto;
+      background: white;
+      padding: 30px;
+      border-radius: 15px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    }
+    .form-control {
+      padding: 12px;
+    }
+    .auth-tabs {
+      margin-bottom: 20px;
+    }
+    .auth-tabs .btn {
+      width: 100%;
+      border-radius: 0;
+      padding: 15px;
+    }
+    .auth-tabs .btn-primary {
+      background-color: #075e54;
+      border-color: #075e54;
+    }
+    .auth-tabs .btn-light {
+      background-color: #f5f5f5;
+    }
+    .logo-text {
+      font-weight: 700;
+      letter-spacing: -0.5px;
+    }
+    .logo-highlight {
+      color: #25D366;
+    }
+  </style>
+</head>
+<body>
+  <!-- Container para notificações -->
+  <div id="notification-container" class="notification-container"></div>
+
+  <!-- Seção de cabeçalho/hero -->
+  <section class="hero-section">
+    <div class="container text-center">
+      <h1><i class="bi bi-robot"></i> <span class="logo-text">Whats<span class="logo-highlight">GPT</span></span></h1>
+      <p class="lead mb-4">Automatize seu atendimento no WhatsApp com Inteligência Artificial</p>
+      <div class="d-flex justify-content-center">
+        <a href="#auth-section" class="btn btn-light btn-lg mx-2">
+          <i class="bi bi-person-circle"></i> Começar agora
+        </a>
+        <a href="#features" class="btn btn-outline-light btn-lg mx-2">
+          <i class="bi bi-info-circle"></i> Saiba mais
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <div class="container">
+    <!-- Seção de recursos -->
+    <section id="features" class="mb-5">
+      <h2 class="text-center mb-5">Como funciona</h2>
+      <div class="row g-4">
+        <div class="col-md-4">
+          <div class="card h-100">
+            <div class="card-body text-center">
+              <i class="bi bi-person-plus-fill feature-icon"></i>
+              <h3>1. Crie sua conta</h3>
+              <p>Registre-se gratuitamente e configure seu acesso personalizado ao sistema.</p>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="card h-100">
+            <div class="card-body text-center">
+              <i class="bi bi-qr-code-scan feature-icon"></i>
+              <h3>2. Conecte seu WhatsApp</h3>
+              <p>Escaneie o QR Code e conecte seu WhatsApp ao nosso sistema em segundos.</p>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="card h-100">
+            <div class="card-body text-center">
+              <i class="bi bi-robot feature-icon"></i>
+              <h3>3. Configure seu bot</h3>
+              <p>Personalize as respostas e as fontes de dados que seu bot utilizará para responder.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Seção de autenticação -->
+    <section id="auth-section" class="my-5">
+      <h2 class="text-center mb-5">Acesse sua conta</h2>
+      <div class="auth-form">
+        <!-- Tabs de login/registro -->
+        <div class="row auth-tabs g-0 mb-4">
+          <div class="col-6">
+            <button id="login-tab" class="btn btn-primary">Login</button>
+          </div>
+          <div class="col-6">
+            <button id="register-tab" class="btn btn-light">Registro</button>
+          </div>
+        </div>
+
+        <!-- Formulário de login -->
+        <form id="login-form">
+          <div class="mb-3">
+            <label for="login-email" class="form-label">Email</label>
+            <div class="input-group">
+              <span class="input-group-text"><i class="bi bi-envelope"></i></span>
+              <input type="email" class="form-control" id="login-email" required>
+            </div>
+          </div>
+          <div class="mb-3">
+            <label for="login-password" class="form-label">Senha</label>
+            <div class="input-group">
+              <span class="input-group-text"><i class="bi bi-key"></i></span>
+              <input type="password" class="form-control" id="login-password" required>
+            </div>
+          </div>
+          <div class="d-grid">
+            <button type="submit" class="btn btn-success btn-lg">
+              <i class="bi bi-box-arrow-in-right"></i> Entrar
+            </button>
+          </div>
+        </form>
+
+        <!-- Formulário de registro (escondido inicialmente) -->
+        <form id="register-form" style="display: none;">
+          <div class="mb-3">
+            <label for="register-name" class="form-label">Nome completo</label>
+            <div class="input-group">
+              <span class="input-group-text"><i class="bi bi-person"></i></span>
+              <input type="text" class="form-control" id="register-name" required>
+            </div>
+          </div>
+          <div class="mb-3">
+            <label for="register-email" class="form-label">Email</label>
+            <div class="input-group">
+              <span class="input-group-text"><i class="bi bi-envelope"></i></span>
+              <input type="email" class="form-control" id="register-email" required>
+            </div>
+          </div>
+          <div class="mb-3">
+            <label for="register-password" class="form-label">Senha</label>
+            <div class="input-group">
+              <span class="input-group-text"><i class="bi bi-key"></i></span>
+              <input type="password" class="form-control" id="register-password" required minlength="6">
+            </div>
+            <div class="form-text">Sua senha deve ter pelo menos 6 caracteres</div>
+          </div>
+          <div class="mb-3">
+            <label for="register-confirm-password" class="form-label">Confirme a senha</label>
+            <div class="input-group">
+              <span class="input-group-text"><i class="bi bi-key-fill"></i></span>
+              <input type="password" class="form-control" id="register-confirm-password" required>
+            </div>
+          </div>
+          <div class="d-grid">
+            <button type="submit" class="btn btn-success btn-lg">
+              <i class="bi bi-person-plus"></i> Registrar
+            </button>
+          </div>
+        </form>
+      </div>
+    </section>
+  </div>
+
+  <!-- Rodapé -->
+  <footer class="bg-dark text-white py-4 mt-5">
+    <div class="container text-center">
+      <p>© 2025 WhatsGPT. Todos os direitos reservados a Nain Zahailo.</p>
+      <p class="mb-0">
+        <i class="bi bi-envelope me-1"></i> nzantunes1@gmail.com 
+        <span class="mx-2">|</span> 
+        <a href="https://wa.me/5547991097740" target="_blank" class="text-white text-decoration-none">
+          <i class="bi bi-whatsapp me-1"></i> (47) 99109-7740
+        </a>
+      </p>
+    </div>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    // Alternar entre login e registro
+    document.getElementById('login-tab').addEventListener('click', function() {
+      document.getElementById('login-form').style.display = 'block';
+      document.getElementById('register-form').style.display = 'none';
+      document.getElementById('login-tab').classList.remove('btn-light');
+      document.getElementById('login-tab').classList.add('btn-primary');
+      document.getElementById('register-tab').classList.remove('btn-primary');
+      document.getElementById('register-tab').classList.add('btn-light');
+    });
+
+    document.getElementById('register-tab').addEventListener('click', function() {
+      document.getElementById('login-form').style.display = 'none';
+      document.getElementById('register-form').style.display = 'block';
+      document.getElementById('register-tab').classList.remove('btn-light');
+      document.getElementById('register-tab').classList.add('btn-primary');
+      document.getElementById('login-tab').classList.remove('btn-primary');
+      document.getElementById('login-tab').classList.add('btn-light');
+    });
+
+    // Função para mostrar notificações
+    function showNotification(message, type = 'success') {
+      const notificationContainer = document.getElementById('notification-container');
+      
+      const notification = document.createElement('div');
+      notification.className = 'notification';
+      
+      let icon = 'check-circle-fill';
+      let color = '#28a745';
+      
+      if (type === 'error') {
+        icon = 'exclamation-circle-fill';
+        color = '#dc3545';
+      } else if (type === 'warning') {
+        icon = 'exclamation-triangle-fill';
+        color = '#ffc107';
+      } else if (type === 'info') {
+        icon = 'info-circle-fill';
+        color = '#17a2b8';
+      }
+      
+      notification.innerHTML = `
+        <i class="bi bi-${icon}" style="color: ${color}; font-size: 1.5rem; margin-right: 10px;"></i>
+        <div>${message}</div>
+      `;
+      
+      notificationContainer.appendChild(notification);
+      
+      // Remover após 5 segundos
+      setTimeout(() => {
+        notification.style.opacity = '0';
+        notification.style.transform = 'translateX(100%)';
+        notification.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+        
+        setTimeout(() => {
+          notificationContainer.removeChild(notification);
+        }, 300);
+      }, 5000);
+    }
+
+    // Handler para formulário de login
+    document.getElementById('login-form').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      
+      const email = document.getElementById('login-email').value;
+      const password = document.getElementById('login-password').value;
+      
+      try {
+        const response = await fetch('/api/login', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ email, password })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          showNotification('Login realizado com sucesso! Redirecionando...');
+          
+          // Redirecionamento para dashboard ou QR code
+          setTimeout(() => {
+            window.location.href = '/after-login';
+          }, 1000);
+        } else {
+          showNotification(data.message || 'Erro ao fazer login. Verifique suas credenciais.', 'error');
+        }
+      } catch (error) {
+        console.error('Erro ao fazer login:', error);
+        showNotification('Erro ao conectar com o servidor. Tente novamente.', 'error');
+      }
+    });
+
+    // Handler para formulário de registro
+    document.getElementById('register-form').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      
+      const name = document.getElementById('register-name').value;
+      const email = document.getElementById('register-email').value;
+      const password = document.getElementById('register-password').value;
+      const confirmPassword = document.getElementById('register-confirm-password').value;
+      
+      // Validação de senha
+      if (password !== confirmPassword) {
+        showNotification('As senhas não coincidem!', 'error');
+        return;
+      }
+      
+      try {
+        const response = await fetch('/api/register', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ name, email, password })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          showNotification('Registro realizado com sucesso! Redirecionando para login...');
+          
+          // Mudar para o formulário de login após registro bem-sucedido
+          setTimeout(() => {
+            document.getElementById('login-tab').click();
+            document.getElementById('login-email').value = email;
+            showNotification('Por favor, faça login com suas novas credenciais.', 'info');
+          }, 1500);
+        } else {
+          showNotification(data.message || 'Erro ao registrar. Tente novamente.', 'error');
+        }
+      } catch (error) {
+        console.error('Erro ao registrar:', error);
+        showNotification('Erro ao conectar com o servidor. Tente novamente.', 'error');
+      }
+    });
+  </script>
+</body>
+</html> 

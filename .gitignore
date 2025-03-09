@@ -1,0 +1,18 @@
+# Dependências
+node_modules/
+
+# Arquivos de ambiente
+.env
+
+# Logs
+logs
+*.log
+npm-debug.log*
+
+# Diretório de autenticação do WhatsApp
+.wwebjs_auth/
+.wwebjs_cache/
+
+# Outros
+.DS_Store
+Thumbs.db 

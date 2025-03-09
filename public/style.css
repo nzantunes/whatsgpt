@@ -1,0 +1,142 @@
+body {
+  background-color: #f5f5f5;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  padding-bottom: 50px;
+}
+
+.main-container {
+  max-width: 1000px;
+  margin: 30px auto;
+}
+
+.card {
+  border-radius: 15px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+  margin-bottom: 30px;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+}
+
+.card-header {
+  background-color: #075e54;
+  color: white;
+  font-weight: 600;
+  padding: 15px 20px;
+}
+
+.card-body {
+  padding: 25px;
+}
+
+.qrcode-container {
+  text-align: center;
+  margin: 20px 0;
+  min-height: 300px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #f9f9f9;
+  border-radius: 10px;
+  padding: 20px;
+  transition: all 0.3s ease;
+}
+
+.qrcode-container img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 10px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.status-badge {
+  font-size: 14px;
+  padding: 8px 15px;
+  border-radius: 20px;
+  display: inline-block;
+  margin-bottom: 15px;
+  transition: all 0.3s ease;
+}
+
+.connected {
+  background-color: #dcf8c6;
+  color: #075e54;
+}
+
+.disconnected {
+  background-color: #ffe6e6;
+  color: #e03131;
+}
+
+.btn-primary {
+  background-color: #128c7e;
+  border-color: #128c7e;
+  transition: all 0.3s ease;
+}
+
+.btn-primary:hover {
+  background-color: #075e54;
+  border-color: #075e54;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+}
+
+.form-label {
+  font-weight: 500;
+  color: #333;
+}
+
+.form-control:focus {
+  border-color: #128c7e;
+  box-shadow: 0 0 0 0.25rem rgba(18, 140, 126, 0.25);
+}
+
+.instructions {
+  background-color: #f0f8ff;
+  border-left: 4px solid #4682b4;
+  padding: 15px;
+  margin-bottom: 20px;
+  border-radius: 5px;
+}
+
+.text-muted {
+  color: #6c757d;
+  word-break: break-word;
+}
+
+.alert {
+  border-radius: 10px;
+  padding: 15px;
+  margin-bottom: 20px;
+  animation: fadeIn 0.5s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+  .main-container {
+    padding: 0 15px;
+  }
+  
+  .card {
+    margin-bottom: 20px;
+  }
+  
+  .qrcode-container {
+    min-height: 250px;
+  }
+} 
