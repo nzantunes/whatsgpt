@@ -13,6 +13,9 @@ npm-debug.log*
 .wwebjs_auth/
 .wwebjs_cache/
 
+# Banco de dados
+database.sqlite
+
 # Outros
 .DS_Store
 Thumbs.db 
