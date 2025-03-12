@@ -75,9 +75,36 @@ if (!fs.existsSync(SESSION_DIR)) {
 // Gerenciador de clientes WhatsApp
 const whatsappClients = new Map(); // userId -> client
 const qrCodes = new Map(); // userId -> { url, generatedAt }
+// Mapa para controlar inicializações em andamento
+const clientInitializing = new Map();
 
 // Função para obter ou criar um cliente WhatsApp para um usuário específico
 async function getClientForUser(userId) {
+  console.log(`Requisição de cliente WhatsApp para usuário ${userId}`);
+  
+  // Verifica se já existe uma inicialização em andamento para este usuário
+  if (clientInitializing.get(userId)) {
+    console.log(`Inicialização já em andamento para usuário ${userId}, aguardando...`);
+    
+    // Aguarda até que a inicialização anterior seja concluída (máximo 30 segundos)
+    let waitTime = 0;
+    const checkInterval = 500; // 0.5 segundos
+    
+    while (clientInitializing.get(userId) && waitTime < 30000) {
+      await new Promise(resolve => setTimeout(resolve, checkInterval));
+      waitTime += checkInterval;
+    }
+    
+    // Verifica se o cliente já está disponível após a espera
+    if (whatsappClients.get(userId)) {
+      console.log(`Cliente obtido após aguardar inicialização para usuário ${userId}`);
+      return whatsappClients.get(userId);
+    }
+  }
+
+  // Marca que uma inicialização está em andamento
+  clientInitializing.set(userId, true);
+  
   try {
     if (!userId) {
       throw new Error('ID de usuário não fornecido');
@@ -94,6 +121,7 @@ async function getClientForUser(userId) {
         } else {
           console.log(`Cliente WhatsApp para usuário ${userId} já existe, mas não está conectado`);
         }
+        clientInitializing.set(userId, false);
         return existingClient;
       }
     }
@@ -109,19 +137,33 @@ async function getClientForUser(userId) {
     
     // Inicializar novo cliente com autenticação local para o usuário
     const newClient = new Client({
+      authStrategy: new LocalAuth({ clientId: `user-${userId}` }),
       puppeteer: {
-        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-gpu'],
+        args: [
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+          '--disable-accelerated-2d-canvas',
+          '--no-first-run',
+          '--no-zygote',
+          '--disable-gpu',
+          '--disable-extensions',
+          '--disable-default-apps',
+          '--window-size=1280,720'
+        ],
         headless: true,
-        executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
+        executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || (process.platform === 'linux' ? '/usr/bin/chromium-browser' : undefined),
         timeout: 60000,
+        ignoreHTTPSErrors: true,
+        protocolTimeout: 60000
       },
-      authStrategy: new LocalAuth({ 
-        clientId: `user-${userId}`,
-        dataPath: sessionDir
-      }),
-      qrMaxRetries: 10,
-      qrTimeoutMs: 60000,
-      restartOnAuthFail: true,
+      webVersionCache: {
+        type: 'remote',
+        remotePath: 'https://raw.githubusercontent.com/wppconnect-team/wa-version/main/html/4.0.0.html'
+      },
+      authTimeoutMs: 60000,
+      qrMaxRetries: 5,
+      restartOnAuthFail: true
     });
     
     // Armazenar o cliente no mapa antes de configurar eventos
@@ -150,43 +192,53 @@ async function getClientForUser(userId) {
     newClient.on('disconnected', async (reason) => {
       console.log(`Cliente WhatsApp desconectado para usuário ${userId}. Motivo: ${reason}`);
       
-      // Notificar o usuário
-      io.to(`user-${userId}`).emit('whatsappStatus', 'disconnected');
-      
-      // Remover o cliente da lista
-      whatsappClients.delete(userId);
-      
-      // Estratégia de reconexão
-      const maxRetries = 5; // Reduzir o número de tentativas
-      let retryCount = 0;
-      let delay = 5000; // 5 segundos iniciais
+      let reconnectAttempts = 0;
+      const maxReconnectAttempts = 5;
       
       const attemptReconnect = async () => {
-        if (retryCount < maxRetries) {
-          retryCount++;
-          console.log(`Tentativa ${retryCount}/${maxRetries} de reconexão para usuário ${userId} em ${delay/1000} segundos...`);
+        if (reconnectAttempts < maxReconnectAttempts) {
+          reconnectAttempts++;
+          const delay = reconnectAttempts * 5000; // Atraso progressivo: 5s, 10s, 15s, etc.
+          console.log(`Tentativa ${reconnectAttempts}/${maxReconnectAttempts} de reconexão para usuário ${userId} em ${delay/1000} segundos...`);
           
           setTimeout(async () => {
             try {
-              // Tentar inicializar o cliente novamente
-              const reconnectedClient = await getClientForUser(userId);
-              await reconnectedClient.initialize();
-              console.log(`Reconexão bem-sucedida para usuário ${userId}`);
-            } catch (error) {
-              console.error(`Falha na tentativa ${retryCount} de reconexão para usuário ${userId}:`, error);
-              
-              // Aumentar o delay para a próxima tentativa (backoff exponencial)
-              delay = Math.min(delay * 1.5, 60000); // Máximo de 60 segundos
+              // Limpar sessão se for problema de autenticação ou arquivo bloqueado
+              if (reason === 'LOGOUT' || reason.includes('EBUSY') || reason.includes('locked')) {
+                console.log(`Limpando sessão para usuário ${userId} antes de reconectar...`);
+                try {
+                  // Remover cliente atual
+                  whatsappClients.delete(userId);
+                  // Limpar QR code
+                  qrCodes.delete(userId);
+                  
+                  // Esperar um pouco antes de tentar novamente
+                  await new Promise(resolve => setTimeout(resolve, 2000));
+                  
+                  // Forçar nova inicialização
+                  clientInitializing.set(userId, false);
+                  getClientForUser(userId).catch(err => {
+                    console.log(`Erro ao reinicializar cliente para usuário ${userId}:`, err);
+                  });
+                } catch (cleanupError) {
+                  console.log(`Erro ao limpar sessão: ${cleanupError}`);
+                }
+              } else {
+                await newClient.initialize();
+              }
+            } catch (err) {
+              console.log(`Erro na tentativa de reconexão ${reconnectAttempts} para usuário ${userId}:`, err);
               attemptReconnect();
             }
           }, delay);
         } else {
           console.log(`Número máximo de tentativas de reconexão atingido para usuário ${userId}`);
-          io.to(`user-${userId}`).emit('whatsappStatus', 'failed');
+          whatsappClients.delete(userId);
+          qrCodes.delete(userId);
+          clientInitializing.set(userId, false);
         }
       };
       
-      // Iniciar processo de reconexão
       attemptReconnect();
     });
     
@@ -209,11 +261,13 @@ async function getClientForUser(userId) {
       throw error;
     }
     
+    console.log(`Cliente inicializado com sucesso para usuário ${userId}`);
+    whatsappClients.set(userId, newClient);
+    clientInitializing.set(userId, false);
     return newClient;
   } catch (error) {
-    console.error(`Erro geral ao configurar cliente WhatsApp para usuário ${userId}:`, error);
-    // Remover o cliente da lista se ocorrer qualquer erro
-    whatsappClients.delete(userId);
+    console.log(`Erro ao inicializar cliente WhatsApp para usuário ${userId}: ${error}`);
+    clientInitializing.set(userId, false);
     throw error;
   }
 }
@@ -226,24 +280,31 @@ const client = new Client({
     clientId: 'whatsapp-bot'
   }),
   puppeteer: {
-    headless: true,
-    executablePath: process.env.PUPPETEER_EXECUTABLE_PATH,
     args: [
-      '--no-sandbox', 
+      '--no-sandbox',
       '--disable-setuid-sandbox',
       '--disable-dev-shm-usage',
       '--disable-accelerated-2d-canvas',
       '--no-first-run',
       '--no-zygote',
-      '--single-process',
       '--disable-gpu',
-      '--ignore-certificate-errors',
-      '--ignore-certificate-errors-spki-list',
-      '--disable-web-security'
+      '--disable-extensions',
+      '--disable-default-apps',
+      '--window-size=1280,720'
     ],
+    headless: true,
+    executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || (process.platform === 'linux' ? '/usr/bin/chromium-browser' : undefined),
+    timeout: 60000,
     ignoreHTTPSErrors: true,
-    protocolTimeout: 30000
-  }
+    protocolTimeout: 60000
+  },
+  webVersionCache: {
+    type: 'remote',
+    remotePath: 'https://raw.githubusercontent.com/wppconnect-team/wa-version/main/html/4.0.0.html'
+  },
+  authTimeoutMs: 60000,
+  qrMaxRetries: 5,
+  restartOnAuthFail: true
 });
 
 // Manipulador para erros não tratados (ajuda a recuperar de falhas do Puppeteer)
