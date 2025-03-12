@@ -1,3 +1,0 @@
-Por favor, adicione uma imagem de connected.png nesta pasta.
-Esta imagem deve representar um estado de "conectado com sucesso".
-Uma marca de verificação verde ou um ícone de sucesso seriam ideais. 

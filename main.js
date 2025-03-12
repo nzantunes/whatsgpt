@@ -1,10 +1,7 @@
 const { Client } = require('whatsapp-web.js');
 const qrcode = require('qrcode-terminal');
 const { OpenAI } = require('openai');
-require('dotenv-safe').config({
-  allowEmptyValues: true,
-  example: '.env.example'
-}); // Carrega variáveis de ambiente do arquivo .env
+require('dotenv').config(); // Carrega variáveis de ambiente do arquivo .env
 
 // Cria uma nova instância do cliente
 const client = new Client();

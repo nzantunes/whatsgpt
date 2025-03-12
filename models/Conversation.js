@@ -28,11 +28,6 @@ const Conversation = db.define('Conversation', {
     allowNull: true,
     comment: 'ID da configuração do bot usada na resposta'
   },
-  user_id: {
-    type: DataTypes.INTEGER,
-    allowNull: true,
-    comment: 'ID do usuário proprietário desta conversa'
-  },
   is_useful: {
     type: DataTypes.BOOLEAN,
     allowNull: true,

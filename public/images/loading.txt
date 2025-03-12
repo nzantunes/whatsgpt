@@ -1,4 +1,0 @@
-Por favor, adicione uma imagem de loading.gif nesta pasta.
-Você pode baixar uma imagem de carregamento em:
-https://loading.io/
-ou usar qualquer outra imagem de carregamento (spinner/loader) de sua preferência. 
