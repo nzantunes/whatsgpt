@@ -45,193 +45,138 @@
     </div>
 
     <script>
-        // Identificar o ID do usuário atual da sessão
-        const userId = '<%= user ? user.id : "1" %>';
-        console.log('ID do usuário atual:', userId);
-        
-        // Conectar ao Socket.io
-        const socket = io();
-        
-        // Elementos da página
-        const qrImg = document.getElementById('qrcode-img');
-        const statusMessage = document.getElementById('status-message');
-        const connectionStatus = document.getElementById('connection-status');
-        const loader = document.getElementById('loader');
-        const timer = document.getElementById('timer');
-        const countdown = document.getElementById('countdown');
-        const refreshBtn = document.getElementById('refresh-btn');
-        
-        // Variáveis para controlar o timer
-        let countdownValue = 60;
-        let countdownInterval;
-        let checkQrInterval;
-        
-        // Função para iniciar o temporizador de expiração
-        function startCountdown() {
-            countdownValue = 60;
-            countdown.textContent = countdownValue;
-            timer.classList.remove('hidden');
+        document.addEventListener('DOMContentLoaded', function() {
+            const qrcodeImg = document.getElementById('qrcode-img');
+            const statusMessage = document.getElementById('status-message');
+            const timerElement = document.getElementById('timer');
+            const countdownElement = document.getElementById('countdown');
+            const refreshBtn = document.getElementById('refresh-btn');
+            const loader = document.getElementById('loader');
             
-            clearInterval(countdownInterval);
-            countdownInterval = setInterval(() => {
-                countdownValue--;
-                countdown.textContent = countdownValue;
+            // Conectar ao servidor via Socket.io
+            const socket = io();
+            
+            // Registrar no canal do usuário
+            socket.on('connect', () => {
+                console.log('Conectado ao servidor via Socket.io');
+                // Buscar QR code inicialmente
+                fetchQRCode();
+            });
+            
+            // Escutar eventos de QR code
+            socket.on('qrcode', (qrUrl) => {
+                console.log('QR Code recebido via WebSocket');
+                displayQRCode(qrUrl);
+                startCountdown();
+            });
+            
+            // Escutar eventos de status do WhatsApp
+            socket.on('whatsappStatus', (status) => {
+                console.log('Status do WhatsApp alterado:', status);
                 
-                if (countdownValue <= 0) {
-                    clearInterval(countdownInterval);
-                    statusMessage.textContent = 'QR Code expirado. Gerando um novo...';
-                    timer.classList.add('hidden');
-                    qrImg.src = '/images/loading.gif';
-                    loader.classList.remove('hidden');
-                    connectionStatus.textContent = 'Aguardando novo QR Code';
-                    refreshBtn.classList.remove('hidden');
-                }
-            }, 1000);
-        }
-        
-        // Função para verificar periodicamente o QR code
-        function startQRCheckInterval() {
-            // Limpar qualquer intervalo existente
-            if (checkQrInterval) {
-                clearInterval(checkQrInterval);
-            }
-            
-            // Verificar a cada 5 segundos
-            checkQrInterval = setInterval(() => {
-                checkQRCode();
-            }, 5000);
-        }
-        
-        // Função para verificar o status do QR code
-        function checkQRCode() {
-            fetch('/get-qrcode')
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        // Se tiver um QR code, exiba-o
-                        if (data.qrcode) {
-                            qrImg.src = data.qrcode;
-                            statusMessage.textContent = 'Escaneie o QR Code com seu WhatsApp';
-                            connectionStatus.textContent = 'QR Code pronto para escanear';
-                            loader.classList.add('hidden');
-                            refreshBtn.classList.add('hidden');
-                            
-                            // Iniciar contagem regressiva
-                            startCountdown();
-                        }
-                        // Se o cliente estiver conectado
-                        else if (data.status === 'connected') {
-                            clearInterval(countdownInterval);
-                            clearInterval(checkQrInterval);
-                            timer.classList.add('hidden');
-                            qrImg.src = '/images/connected.png';
-                            statusMessage.textContent = 'WhatsApp conectado com sucesso!';
-                            connectionStatus.textContent = 'Conectado';
-                            refreshBtn.classList.add('hidden');
-                            
-                            // Redirecionar para a página de configuração após 3 segundos
-                            setTimeout(() => {
-                                window.location.href = '/config';
-                            }, 3000);
-                        }
-                    } else {
-                        // Em caso de erro, mostrar botão de atualização
-                        if (countdownValue <= 0) {
-                            refreshBtn.classList.remove('hidden');
-                        }
-                    }
-                })
-                .catch(error => {
-                    console.error('Erro ao verificar QR code:', error);
-                    refreshBtn.classList.remove('hidden');
-                });
-        }
-        
-        // Função para requisitar um novo QR code
-        function requestNewQRCode() {
-            statusMessage.textContent = 'Gerando novo QR Code...';
-            refreshBtn.classList.add('hidden');
-            loader.classList.remove('hidden');
-            
-            fetch('/refresh-qrcode', { method: 'POST' })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        // Iniciar verificação do QR code
-                        setTimeout(checkQRCode, 3000);
-                    } else {
-                        statusMessage.textContent = 'Erro ao gerar QR Code. Tente novamente.';
-                        refreshBtn.classList.remove('hidden');
-                    }
-                })
-                .catch(error => {
-                    console.error('Erro ao solicitar novo QR Code:', error);
-                    statusMessage.textContent = 'Erro ao conectar ao servidor. Tente recarregar a página.';
-                    refreshBtn.classList.remove('hidden');
-                });
-        }
-        
-        // Adicionar event listener ao botão de atualizar
-        refreshBtn.addEventListener('click', requestNewQRCode);
-        
-        // Receber QR Code via Socket.io
-        socket.on('qrcode', (qrcodeData) => {
-            console.log('QR code recebido via Socket.io');
-            qrImg.src = qrcodeData;
-            statusMessage.textContent = 'Escaneie o QR Code com seu WhatsApp';
-            connectionStatus.textContent = 'QR Code pronto para escanear';
-            loader.classList.add('hidden');
-            refreshBtn.classList.add('hidden');
-            
-            // Iniciar contagem regressiva
-            startCountdown();
-        });
-        
-        // Receber status do WhatsApp
-        socket.on('whatsappStatus', (status) => {
-            console.log('Status do WhatsApp recebido:', status);
-            switch(status) {
-                case 'connected':
-                    clearInterval(countdownInterval);
-                    clearInterval(checkQrInterval);
-                    timer.classList.add('hidden');
-                    qrImg.src = '/images/connected.png';
-                    statusMessage.textContent = 'WhatsApp conectado com sucesso!';
-                    connectionStatus.textContent = 'Conectado';
+                if (status === 'connected') {
+                    // WhatsApp conectado
+                    qrcodeImg.src = '/images/connected.svg';
+                    statusMessage.innerText = 'WhatsApp conectado com sucesso!';
+                    statusMessage.className = 'success-message';
+                    timerElement.classList.add('hidden');
                     refreshBtn.classList.add('hidden');
+                    loader.classList.add('hidden');
                     
                     // Redirecionar para a página de configuração após 3 segundos
                     setTimeout(() => {
                         window.location.href = '/config';
                     }, 3000);
-                    break;
-                    
-                case 'disconnected':
-                    statusMessage.textContent = 'WhatsApp desconectado. Gerando novo QR Code...';
-                    connectionStatus.textContent = 'Desconectado';
-                    qrImg.src = '/images/loading.gif';
+                } else if (status === 'disconnected') {
+                    // WhatsApp desconectado
+                    statusMessage.innerText = 'WhatsApp desconectado. Gerando novo QR Code...';
+                    statusMessage.className = 'error-message';
+                    qrcodeImg.src = '/images/loading.svg';
                     loader.classList.remove('hidden');
-                    timer.classList.add('hidden');
+                    timerElement.classList.add('hidden');
                     
-                    // Solicitar novo QR code após desconexão
-                    setTimeout(requestNewQRCode, 2000);
-                    break;
-                    
-                case 'failed':
-                    statusMessage.textContent = 'Falha na conexão. Clique para tentar novamente.';
-                    connectionStatus.textContent = 'Falha';
-                    refreshBtn.classList.remove('hidden');
-                    break;
-            }
-        });
-        
-        // Verificar status ao carregar a página
-        window.addEventListener('load', () => {
-            // Iniciar verificação do QR code
-            checkQRCode();
+                    // Tentar gerar novo QR Code após 3 segundos
+                    setTimeout(fetchQRCode, 3000);
+                }
+            });
             
-            // Iniciar intervalo para verificar periodicamente
-            startQRCheckInterval();
+            // Função para buscar QR code do servidor
+            function fetchQRCode() {
+                statusMessage.innerText = 'Gerando QR Code...';
+                qrcodeImg.src = '/images/loading.svg';
+                loader.classList.remove('hidden');
+                timerElement.classList.add('hidden');
+                refreshBtn.classList.add('hidden');
+                
+                fetch('/get-qrcode')
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            if (data.qrcode) {
+                                // QR Code disponível
+                                displayQRCode(data.qrcode);
+                                startCountdown();
+                            } else if (data.status === 'connected') {
+                                // WhatsApp já conectado
+                                qrcodeImg.src = '/images/connected.svg';
+                                statusMessage.innerText = 'WhatsApp conectado com sucesso!';
+                                statusMessage.className = 'success-message';
+                                loader.classList.add('hidden');
+                                
+                                // Redirecionar para a página de configuração após 3 segundos
+                                setTimeout(() => {
+                                    window.location.href = '/config';
+                                }, 3000);
+                            } else {
+                                // QR Code pendente, aguardando via WebSocket
+                                statusMessage.innerText = 'Aguardando QR Code...';
+                            }
+                        } else {
+                            // Erro ao obter QR Code
+                            statusMessage.innerText = 'Erro ao gerar QR Code. Tente novamente.';
+                            statusMessage.className = 'error-message';
+                            refreshBtn.classList.remove('hidden');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Erro ao buscar QR Code:', error);
+                        statusMessage.innerText = 'Erro ao comunicar com o servidor. Tente novamente.';
+                        statusMessage.className = 'error-message';
+                        refreshBtn.classList.remove('hidden');
+                        loader.classList.add('hidden');
+                    });
+            }
+            
+            // Função para exibir o QR code
+            function displayQRCode(qrUrl) {
+                qrcodeImg.src = qrUrl;
+                statusMessage.innerText = 'Escaneie o QR Code com seu WhatsApp';
+                statusMessage.className = '';
+                loader.classList.add('hidden');
+                refreshBtn.classList.add('hidden');
+            }
+            
+            // Iniciar contagem regressiva de 45 segundos
+            function startCountdown() {
+                let timeLeft = 45;
+                countdownElement.innerText = timeLeft;
+                timerElement.classList.remove('hidden');
+                
+                const countdownInterval = setInterval(() => {
+                    timeLeft--;
+                    countdownElement.innerText = timeLeft;
+                    
+                    if (timeLeft <= 0) {
+                        clearInterval(countdownInterval);
+                        statusMessage.innerText = 'QR Code expirado. Clique para gerar um novo.';
+                        timerElement.classList.add('hidden');
+                        refreshBtn.classList.remove('hidden');
+                    }
+                }, 1000);
+            }
+            
+            // Evento de clique para o botão de atualização
+            refreshBtn.addEventListener('click', fetchQRCode);
         });
     </script>
 </body>
