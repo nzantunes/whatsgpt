@@ -381,13 +381,11 @@
         const data = await response.json();
         
         if (data.success) {
-          showNotification('Registro realizado com sucesso! Redirecionando para login...');
+          showNotification('Registro realizado com sucesso! Redirecionando...');
           
-          // Mudar para o formulário de login após registro bem-sucedido
+          // Redirecionar diretamente para a página após login
           setTimeout(() => {
-            document.getElementById('login-tab').click();
-            document.getElementById('login-email').value = email;
-            showNotification('Por favor, faça login com suas novas credenciais.', 'info');
+            window.location.href = '/after-login';
           }, 1500);
         } else {
           showNotification(data.message || 'Erro ao registrar. Tente novamente.', 'error');

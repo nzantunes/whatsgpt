@@ -631,47 +631,53 @@ async function extractMultipleSiteContent(urls) {
 app.post('/api/register', async (req, res) => {
   try {
     const { name, email, password } = req.body;
-    
-    // Validação básica
+
     if (!name || !email || !password) {
-      return res.status(400).json({
-        success: false,
-        message: 'Todos os campos são obrigatórios'
-      });
+      return res.status(400).json({ success: false, message: 'Por favor, preencha todos os campos.' });
     }
-    
+
     // Verificar se o email já está em uso
-    const existingUser = await findUserByEmail(email);
+    const existingUser = await db.users.findOne({ email });
     if (existingUser) {
-      return res.status(400).json({
-        success: false,
-        message: 'Este email já está em uso'
-      });
+      return res.status(400).json({ success: false, message: 'Este email já está em uso.' });
     }
-    
+
     // Criar novo usuário
-    const newUser = await addUser({
+    const newUser = {
+      _id: new ObjectId(),
       name,
       email,
-      password
-    });
+      password, // Em produção, a senha deve ser hash
+      createdAt: new Date(),
+      lastLogin: new Date()
+    };
+
+    await db.users.insertOne(newUser);
+
+    // Iniciar sessão para o usuário recém-registrado
+    req.session.user = {
+      id: newUser._id.toString(),
+      name: newUser.name,
+      email: newUser.email
+    };
+
+    console.log(`Carregando configurações ativas para o usuário: ${newUser._id}`);
     
-    res.json({
-      success: true,
-      message: 'Usuário registrado com sucesso',
+    // Inicializar cliente WhatsApp para o usuário
+    whatsappClientManager.getOrCreateClient(newUser._id.toString());
+
+    return res.json({ 
+      success: true, 
+      message: 'Usuário registrado com sucesso!',
       user: {
-        id: newUser.id,
+        id: newUser._id.toString(),
         name: newUser.name,
         email: newUser.email
       }
     });
   } catch (error) {
     console.error('Erro ao registrar usuário:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Erro ao registrar usuário',
-      error: error.message
-    });
+    return res.status(500).json({ success: false, message: 'Erro interno do servidor' });
   }
 });
 
