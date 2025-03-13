@@ -795,14 +795,12 @@ app.get('/after-login', isAuthenticated, async (req, res) => {
     const userId = req.session.user.id;
     const client = whatsappClientManager.getClient(userId);
     
-  if (client.info) {
-    res.redirect('/config');
-  } else {
+    // Sempre redirecionar para a página de QR code primeiro após login
+    // para garantir que o usuário conecte o WhatsApp
     res.redirect('/qrcode');
-    }
   } catch (error) {
     console.error('Erro na rota after-login:', error);
-    res.redirect('/config');
+    res.redirect('/qrcode');
   }
 });
 
