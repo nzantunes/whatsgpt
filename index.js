@@ -796,10 +796,10 @@ app.get('/after-login', isAuthenticated, async (req, res) => {
     const userId = req.session.user.id;
     const client = whatsappClientManager.getClient(userId);
     
-    if (client.info) {
-      res.redirect('/config');
-    } else {
-      res.redirect('/qrcode');
+  if (client.info) {
+    res.redirect('/config');
+  } else {
+    res.redirect('/qrcode');
     }
   } catch (error) {
     console.error('Erro na rota after-login:', error);
@@ -823,7 +823,7 @@ app.get('/get-qrcode', isAuthenticated, (req, res) => {
     // Obter QR code para este usuário específico
     const qrResult = whatsappClientManager.getQRCode(userId);
     return res.json(qrResult);
-  } catch (error) {
+        } catch (error) {
     console.error('Erro ao obter QR code:', error);
     return res.status(500).json({
       success: false,
@@ -840,13 +840,13 @@ app.get('/api/user-info', isAuthenticated, (req, res) => {
     
     if (!user) {
       return res.status(401).json({
-        success: false,
+          success: false,
         message: 'Usuário não autenticado'
-      });
-    }
-    
-    return res.json({
-      success: true,
+        });
+      }
+      
+      return res.json({
+        success: true,
       userId: user.id,
       email: user.email,
       name: user.name
@@ -1070,12 +1070,12 @@ io.on('connection', (socket) => {
   socket.on('get-whatsapp-status', () => {
     if (socket.userId) {
       const client = whatsappClientManager.getClient(socket.userId);
-      if (client.info) {
-        socket.emit('whatsappStatus', 'connected');
-      } else {
-        socket.emit('whatsappStatus', 'disconnected');
-      }
-      
+  if (client.info) {
+    socket.emit('whatsappStatus', 'connected');
+  } else {
+    socket.emit('whatsappStatus', 'disconnected');
+  }
+  
       // Enviar QR code se disponível
       const qrResult = whatsappClientManager.getQRCode(socket.userId);
       if (qrResult.success && qrResult.qrcode) {
