@@ -1,5 +1,4 @@
 const express = require('express');
-const { Client } = require('whatsapp-web.js');
 const qrcode = require('qrcode');
 const { OpenAI } = require('openai');
 const socketIO = require('socket.io');
@@ -1155,7 +1154,7 @@ whatsappClientManager.events.on('message', async (data) => {
     await loadActiveConfiguration(userId);
     
     // Processar a mensagem
-    const resposta = await processarMensagem(message.body, message.from);
+    const resposta = await consultarGPT(message.body, message.from);
     
     // Enviar resposta usando o cliente deste usuário
     await whatsappClientManager.sendMessage(userId, message.from, resposta);
