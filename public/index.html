@@ -77,38 +77,49 @@
         opacity: 1;
       }
     }
-    .auth-form {
-      max-width: 500px;
-      margin: 0 auto;
-      background: white;
-      padding: 30px;
-      border-radius: 15px;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-    }
-    .form-control {
-      padding: 12px;
-    }
-    .auth-tabs {
-      margin-bottom: 20px;
-    }
-    .auth-tabs .btn {
-      width: 100%;
-      border-radius: 0;
-      padding: 15px;
-    }
-    .auth-tabs .btn-primary {
-      background-color: #075e54;
-      border-color: #075e54;
-    }
-    .auth-tabs .btn-light {
-      background-color: #f5f5f5;
-    }
     .logo-text {
       font-weight: 700;
       letter-spacing: -0.5px;
     }
     .logo-highlight {
       color: #25D366;
+    }
+    .qr-connect-card {
+      max-width: 500px;
+      margin: 0 auto;
+      background: white;
+      padding: 30px;
+      border-radius: 15px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+      text-align: center;
+    }
+    .connect-icon {
+      font-size: 4rem;
+      color: #075e54;
+      margin-bottom: 1rem;
+    }
+    .steps-container {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    .step-card {
+      background-color: white;
+      border-radius: 10px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+    }
+    .step-number {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 30px;
+      height: 30px;
+      background-color: #075e54;
+      color: white;
+      border-radius: 50%;
+      margin-right: 10px;
+      font-weight: bold;
     }
   </style>
 </head>
@@ -122,125 +133,81 @@
       <h1><i class="bi bi-robot"></i> <span class="logo-text">Whats<span class="logo-highlight">GPT</span></span></h1>
       <p class="lead mb-4">Automatize seu atendimento no WhatsApp com Inteligência Artificial</p>
       <div class="d-flex justify-content-center">
-        <a href="#auth-section" class="btn btn-light btn-lg mx-2">
-          <i class="bi bi-person-circle"></i> Começar agora
+        <a href="/qrcode" class="btn btn-light btn-lg mx-2">
+          <i class="bi bi-qr-code-scan"></i> Conectar com WhatsApp
         </a>
-        <a href="#features" class="btn btn-outline-light btn-lg mx-2">
-          <i class="bi bi-info-circle"></i> Saiba mais
+        <a href="#how-it-works" class="btn btn-outline-light btn-lg mx-2">
+          <i class="bi bi-info-circle"></i> Como funciona
         </a>
       </div>
     </div>
   </section>
 
   <div class="container">
-    <!-- Seção de recursos -->
-    <section id="features" class="mb-5">
+    <!-- Seção de conexão direta -->
+    <section class="mb-5">
+      <div class="qr-connect-card">
+        <i class="bi bi-whatsapp connect-icon"></i>
+        <h2 class="mb-3">Acesse Diretamente pelo WhatsApp</h2>
+        <p class="mb-4">Sem necessidade de criar conta! Basta escanear o QR code com seu WhatsApp e começar a usar seu assistente personalizado.</p>
+        <a href="/qrcode" class="btn btn-success btn-lg">
+          <i class="bi bi-qr-code-scan"></i> Escanear QR Code
+        </a>
+      </div>
+    </section>
+
+    <!-- Como funciona -->
+    <section id="how-it-works" class="mb-5">
       <h2 class="text-center mb-5">Como funciona</h2>
-      <div class="row g-4">
-        <div class="col-md-4">
-          <div class="card h-100">
-            <div class="card-body text-center">
-              <i class="bi bi-person-plus-fill feature-icon"></i>
-              <h3>1. Crie sua conta</h3>
-              <p>Registre-se gratuitamente e configure seu acesso personalizado ao sistema.</p>
-            </div>
-          </div>
+      <div class="steps-container">
+        <div class="step-card">
+          <h3><span class="step-number">1</span> Escaneie o QR Code</h3>
+          <p>Conecte seu WhatsApp escaneando o QR code. Seu número se tornará automaticamente seu identificador único no sistema.</p>
         </div>
-        <div class="col-md-4">
-          <div class="card h-100">
-            <div class="card-body text-center">
-              <i class="bi bi-qr-code-scan feature-icon"></i>
-              <h3>2. Conecte seu WhatsApp</h3>
-              <p>Escaneie o QR Code e conecte seu WhatsApp ao nosso sistema em segundos.</p>
-            </div>
-          </div>
+        
+        <div class="step-card">
+          <h3><span class="step-number">2</span> Configure seu assistente</h3>
+          <p>Personalize as respostas e adicione fontes de conhecimento que seu bot utilizará para responder às perguntas.</p>
         </div>
-        <div class="col-md-4">
-          <div class="card h-100">
-            <div class="card-body text-center">
-              <i class="bi bi-robot feature-icon"></i>
-              <h3>3. Configure seu bot</h3>
-              <p>Personalize as respostas e as fontes de dados que seu bot utilizará para responder.</p>
-            </div>
-          </div>
+        
+        <div class="step-card">
+          <h3><span class="step-number">3</span> Comece a utilizar</h3>
+          <p>Seu assistente estará pronto para responder às mensagens com base nas configurações que você definiu.</p>
         </div>
       </div>
     </section>
 
-    <!-- Seção de autenticação -->
-    <section id="auth-section" class="my-5">
-      <h2 class="text-center mb-5">Acesse sua conta</h2>
-      <div class="auth-form">
-        <!-- Tabs de login/registro -->
-        <div class="row auth-tabs g-0 mb-4">
-          <div class="col-6">
-            <button id="login-tab" class="btn btn-primary">Login</button>
-          </div>
-          <div class="col-6">
-            <button id="register-tab" class="btn btn-light">Registro</button>
+    <!-- Seção de recursos -->
+    <section id="features" class="mb-5">
+      <h2 class="text-center mb-5">Recursos</h2>
+      <div class="row g-4">
+        <div class="col-md-4">
+          <div class="card h-100">
+            <div class="card-body text-center">
+              <i class="bi bi-robot feature-icon"></i>
+              <h3>Assistente Inteligente</h3>
+              <p>Respostas personalizadas baseadas em IA avançada para atender melhor seus contatos.</p>
+            </div>
           </div>
         </div>
-
-        <!-- Formulário de login -->
-        <form id="login-form">
-          <div class="mb-3">
-            <label for="login-email" class="form-label">Email</label>
-            <div class="input-group">
-              <span class="input-group-text"><i class="bi bi-envelope"></i></span>
-              <input type="email" class="form-control" id="login-email" required>
+        <div class="col-md-4">
+          <div class="card h-100">
+            <div class="card-body text-center">
+              <i class="bi bi-database feature-icon"></i>
+              <h3>Personalização Completa</h3>
+              <p>Adicione documentos, planilhas, URLs e textos para seu bot utilizar como base de conhecimento.</p>
             </div>
           </div>
-          <div class="mb-3">
-            <label for="login-password" class="form-label">Senha</label>
-            <div class="input-group">
-              <span class="input-group-text"><i class="bi bi-key"></i></span>
-              <input type="password" class="form-control" id="login-password" required>
+        </div>
+        <div class="col-md-4">
+          <div class="card h-100">
+            <div class="card-body text-center">
+              <i class="bi bi-phone feature-icon"></i>
+              <h3>Integração com WhatsApp</h3>
+              <p>Funciona diretamente com seu número do WhatsApp, sem necessidade de apps adicionais.</p>
             </div>
           </div>
-          <div class="d-grid">
-            <button type="submit" class="btn btn-success btn-lg">
-              <i class="bi bi-box-arrow-in-right"></i> Entrar
-            </button>
-          </div>
-        </form>
-
-        <!-- Formulário de registro (escondido inicialmente) -->
-        <form id="register-form" style="display: none;">
-          <div class="mb-3">
-            <label for="register-name" class="form-label">Nome completo</label>
-            <div class="input-group">
-              <span class="input-group-text"><i class="bi bi-person"></i></span>
-              <input type="text" class="form-control" id="register-name" required>
-            </div>
-          </div>
-          <div class="mb-3">
-            <label for="register-email" class="form-label">Email</label>
-            <div class="input-group">
-              <span class="input-group-text"><i class="bi bi-envelope"></i></span>
-              <input type="email" class="form-control" id="register-email" required>
-            </div>
-          </div>
-          <div class="mb-3">
-            <label for="register-password" class="form-label">Senha</label>
-            <div class="input-group">
-              <span class="input-group-text"><i class="bi bi-key"></i></span>
-              <input type="password" class="form-control" id="register-password" required minlength="6">
-            </div>
-            <div class="form-text">Sua senha deve ter pelo menos 6 caracteres</div>
-          </div>
-          <div class="mb-3">
-            <label for="register-confirm-password" class="form-label">Confirme a senha</label>
-            <div class="input-group">
-              <span class="input-group-text"><i class="bi bi-key-fill"></i></span>
-              <input type="password" class="form-control" id="register-confirm-password" required>
-            </div>
-          </div>
-          <div class="d-grid">
-            <button type="submit" class="btn btn-success btn-lg">
-              <i class="bi bi-person-plus"></i> Registrar
-            </button>
-          </div>
-        </form>
+        </div>
       </div>
     </section>
   </div>
@@ -260,141 +227,5 @@
   </footer>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-  <script>
-    // Alternar entre login e registro
-    document.getElementById('login-tab').addEventListener('click', function() {
-      document.getElementById('login-form').style.display = 'block';
-      document.getElementById('register-form').style.display = 'none';
-      document.getElementById('login-tab').classList.remove('btn-light');
-      document.getElementById('login-tab').classList.add('btn-primary');
-      document.getElementById('register-tab').classList.remove('btn-primary');
-      document.getElementById('register-tab').classList.add('btn-light');
-    });
-
-    document.getElementById('register-tab').addEventListener('click', function() {
-      document.getElementById('login-form').style.display = 'none';
-      document.getElementById('register-form').style.display = 'block';
-      document.getElementById('register-tab').classList.remove('btn-light');
-      document.getElementById('register-tab').classList.add('btn-primary');
-      document.getElementById('login-tab').classList.remove('btn-primary');
-      document.getElementById('login-tab').classList.add('btn-light');
-    });
-
-    // Função para mostrar notificações
-    function showNotification(message, type = 'success') {
-      const notificationContainer = document.getElementById('notification-container');
-      
-      const notification = document.createElement('div');
-      notification.className = 'notification';
-      
-      let icon = 'check-circle-fill';
-      let color = '#28a745';
-      
-      if (type === 'error') {
-        icon = 'exclamation-circle-fill';
-        color = '#dc3545';
-      } else if (type === 'warning') {
-        icon = 'exclamation-triangle-fill';
-        color = '#ffc107';
-      } else if (type === 'info') {
-        icon = 'info-circle-fill';
-        color = '#17a2b8';
-      }
-      
-      notification.innerHTML = `
-        <i class="bi bi-${icon}" style="color: ${color}; font-size: 1.5rem; margin-right: 10px;"></i>
-        <div>${message}</div>
-      `;
-      
-      notificationContainer.appendChild(notification);
-      
-      // Remover após 5 segundos
-      setTimeout(() => {
-        notification.style.opacity = '0';
-        notification.style.transform = 'translateX(100%)';
-        notification.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
-        
-        setTimeout(() => {
-          notificationContainer.removeChild(notification);
-        }, 300);
-      }, 5000);
-    }
-
-    // Handler para formulário de login
-    document.getElementById('login-form').addEventListener('submit', async function(e) {
-      e.preventDefault();
-      
-      const email = document.getElementById('login-email').value;
-      const password = document.getElementById('login-password').value;
-      
-      try {
-        const response = await fetch('/api/login', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ email, password })
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-          showNotification('Login realizado com sucesso! Redirecionando...');
-          
-          // Redirecionamento para dashboard ou QR code
-          setTimeout(() => {
-            window.location.href = '/after-login';
-          }, 1000);
-        } else {
-          showNotification(data.message || 'Erro ao fazer login. Verifique suas credenciais.', 'error');
-        }
-      } catch (error) {
-        console.error('Erro ao fazer login:', error);
-        showNotification('Erro ao conectar com o servidor. Tente novamente.', 'error');
-      }
-    });
-
-    // Handler para formulário de registro
-    document.getElementById('register-form').addEventListener('submit', async function(e) {
-      e.preventDefault();
-      
-      const name = document.getElementById('register-name').value;
-      const email = document.getElementById('register-email').value;
-      const password = document.getElementById('register-password').value;
-      const confirmPassword = document.getElementById('register-confirm-password').value;
-      
-      // Validação de senha
-      if (password !== confirmPassword) {
-        showNotification('As senhas não coincidem!', 'error');
-        return;
-      }
-      
-      try {
-        const response = await fetch('/api/register', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ name, email, password })
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-          showNotification('Registro realizado com sucesso! Redirecionando...');
-          
-          // Redirecionar diretamente para a página após login
-          setTimeout(() => {
-            window.location.href = '/after-login';
-          }, 1500);
-        } else {
-          showNotification(data.message || 'Erro ao registrar. Tente novamente.', 'error');
-        }
-      } catch (error) {
-        console.error('Erro ao registrar:', error);
-        showNotification('Erro ao conectar com o servidor. Tente novamente.', 'error');
-      }
-    });
-  </script>
 </body>
 </html> 

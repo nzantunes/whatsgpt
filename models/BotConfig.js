@@ -7,73 +7,94 @@ const BotConfig = db.define('bot_configs', {
     primaryKey: true,
     autoIncrement: true
   },
-  user_id: {
-    type: DataTypes.INTEGER,
-    allowNull: false
-  },
   name: {
     type: DataTypes.STRING,
     allowNull: false
   },
   prompt: {
     type: DataTypes.TEXT,
+    allowNull: false
+  },
+  site_urls: {
+    type: DataTypes.TEXT,
+    allowNull: true
+  },
+  site_content: {
+    type: DataTypes.TEXT('long'),
     allowNull: true
   },
   additional_info: {
-    type: DataTypes.JSON,
+    type: DataTypes.TEXT,
     allowNull: true
-  },
-  additional_urls: {
-    type: DataTypes.JSON,
-    allowNull: true
-  },
-  openai_key: {
-    type: DataTypes.STRING,
-    allowNull: true
-  },
-  gpt_model: {
-    type: DataTypes.STRING,
-    allowNull: true,
-    defaultValue: 'gpt-3.5-turbo'
   },
   is_active: {
     type: DataTypes.BOOLEAN,
-    allowNull: false,
     defaultValue: false
   },
+  // Campos para armazenar conteúdo de PDFs
   pdf_content: {
     type: DataTypes.TEXT('long'),
-    allowNull: true,
-    comment: 'Conteúdo extraído de arquivos PDF'
-  },
-  xlsx_content: {
-    type: DataTypes.TEXT('long'),
-    allowNull: true,
-    comment: 'Conteúdo extraído de planilhas Excel'
+    allowNull: true
   },
   pdf_filenames: {
-    type: DataTypes.JSON,
-    allowNull: true,
-    comment: 'Nomes dos arquivos PDF uploads'
+    type: DataTypes.TEXT,
+    allowNull: true
+  },
+  // Campos para armazenar conteúdo de Excel
+  xlsx_content: {
+    type: DataTypes.TEXT('long'),
+    allowNull: true
   },
   xlsx_filenames: {
-    type: DataTypes.JSON,
-    allowNull: true,
-    comment: 'Nomes dos arquivos Excel uploads'
+    type: DataTypes.TEXT,
+    allowNull: true
   },
+  // Campos para armazenar conteúdo de CSV
   csv_content: {
     type: DataTypes.TEXT('long'),
-    allowNull: true,
-    comment: 'Conteúdo extraído de arquivos CSV'
+    allowNull: true
   },
   csv_filenames: {
-    type: DataTypes.JSON,
+    type: DataTypes.TEXT,
+    allowNull: true
+  },
+  // Modelo GPT a ser usado
+  model: {
+    type: DataTypes.STRING,
+    defaultValue: 'gpt-3.5-turbo',
+    allowNull: false
+  },
+  // Referência para WhatsAppUser
+  whatsapp_user_id: {
+    type: DataTypes.INTEGER,
     allowNull: true,
-    comment: 'Nomes dos arquivos CSV uploads'
+    references: {
+      model: 'whatsapp_users',
+      key: 'id'
+    }
+  },
+  // Mantendo a referência ao User tradicional para retrocompatibilidade
+  user_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    references: {
+      model: 'users',
+      key: 'id'
+    }
+  },
+  created_at: {
+    type: DataTypes.DATE,
+    defaultValue: DataTypes.NOW
+  },
+  updated_at: {
+    type: DataTypes.DATE,
+    defaultValue: DataTypes.NOW
   }
 }, {
   timestamps: true,
   underscored: true
 });
 
-module.exports = BotConfig; 
+module.exports = {
+  BotConfig
+}; 

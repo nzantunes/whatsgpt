@@ -3,44 +3,76 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Conectar WhatsApp - ChatBot</title>
+  <title>Conectar WhatsApp - WhatsGPT</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
   <style>
+    :root {
+      --primary-color: #128C7E;
+      --primary-dark: #075e54;
+      --secondary-color: #25D366;
+      --light-bg: #f5f5f5;
+      --card-shadow: 0 4px 20px rgba(0,0,0,0.1);
+      --border-radius: 15px;
+    }
+    
     body {
-      background-color: #f5f5f5;
+      background-color: var(--light-bg);
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       display: flex;
       flex-direction: column;
       min-height: 100vh;
     }
+    
     .navbar {
-      background-color: #075e54;
+      background-color: var(--primary-dark);
       box-shadow: 0 2px 10px rgba(0,0,0,0.1);
     }
+    
     .navbar-brand {
       color: white;
       font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
     }
+    
+    .navbar-brand i {
+      font-size: 1.25rem;
+    }
+    
+    .logo-text {
+      font-weight: 700;
+      letter-spacing: -0.5px;
+    }
+    
+    .logo-highlight {
+      color: var(--secondary-color);
+    }
+    
     .navbar-nav .nav-link {
       color: rgba(255,255,255,0.85);
     }
+    
     .navbar-nav .nav-link:hover {
       color: white;
     }
+    
     main {
       flex: 1;
       padding: 2rem 0;
     }
+    
     .qrcode-container {
       background-color: white;
-      border-radius: 15px;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+      border-radius: var(--border-radius);
+      box-shadow: var(--card-shadow);
       padding: 2rem;
       text-align: center;
       max-width: 700px;
       margin: 0 auto;
     }
+    
     .qrcode-display {
       margin: 2rem auto;
       padding: 1.5rem;
@@ -51,11 +83,14 @@
       align-items: center;
       justify-content: center;
       position: relative;
+      border: 2px dashed #ddd;
     }
+    
     .qrcode-display img {
       max-width: 100%;
       height: auto;
     }
+    
     .status-indicator {
       display: inline-flex;
       align-items: center;
@@ -64,34 +99,42 @@
       margin-bottom: 1rem;
       font-weight: 500;
     }
+    
     .status-connecting {
       background-color: #fff3cd;
       color: #856404;
     }
+    
     .status-connected {
       background-color: #d4edda;
       color: #155724;
     }
+    
     .status-disconnected {
       background-color: #f8d7da;
       color: #721c24;
     }
+    
     .status-waiting {
       background-color: #e2e3e5;
       color: #383d41;
     }
+    
     .status-indicator i {
       margin-right: 0.5rem;
     }
+    
     .notification-container {
       position: fixed;
       top: 20px;
       right: 20px;
       z-index: 1000;
     }
+    
     .pulse {
       animation: pulse 2s infinite;
     }
+    
     @keyframes pulse {
       0% {
         opacity: 1;
@@ -103,25 +146,37 @@
         opacity: 1;
       }
     }
+    
     .countdown {
       font-size: 0.9rem;
       color: #6c757d;
       margin-top: 1rem;
     }
+    
     .expired-message {
       color: #721c24;
       margin-top: 1rem;
       font-weight: 500;
     }
+    
     .steps {
       margin: 2rem 0;
       text-align: left;
     }
+    
     .steps ol {
       padding-left: 2rem;
     }
+    
     .steps li {
       margin-bottom: 0.5rem;
+    }
+    
+    .number-display {
+      font-size: 1.1rem;
+      font-weight: 500;
+      margin-top: 1rem;
+      color: var(--primary-dark);
     }
   </style>
 </head>
@@ -131,22 +186,22 @@
   <!-- Barra de navegação -->
   <nav class="navbar navbar-expand-lg navbar-dark">
     <div class="container">
-      <a class="navbar-brand" href="/config">WhatsApp ChatBot</a>
+      <a class="navbar-brand" href="/">
+        <i class="bi bi-robot"></i> <span class="logo-text">Whats<span class="logo-highlight">GPT</span></span>
+      </a>
       <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
         <span class="navbar-toggler-icon"></span>
       </button>
       <div class="collapse navbar-collapse" id="navbarNav">
         <ul class="navbar-nav ms-auto">
           <li class="nav-item">
-            <a class="nav-link active" href="/qrcode">QR Code</a>
+            <a class="nav-link active" href="/qrcode"><i class="bi bi-qr-code-scan"></i> QR Code</a>
+          </li>
+          <li class="nav-item d-none" id="config-nav-item">
+            <a class="nav-link" href="/config"><i class="bi bi-gear"></i> Configuração</a>
           </li>
           <li class="nav-item">
-            <a class="nav-link" href="/config">Configuração</a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link" href="/logout">
-              <i class="bi bi-box-arrow-right"></i> Sair
-            </a>
+            <a class="nav-link" href="/"><i class="bi bi-house"></i> Início</a>
           </li>
         </ul>
       </div>
@@ -156,7 +211,10 @@
   <main>
     <div class="container">
       <div class="qrcode-container">
-        <h1 class="mb-4"><i class="bi bi-qr-code"></i> Conectar WhatsApp</h1>
+        <h1 class="mb-4">
+          <i class="bi bi-qr-code-scan"></i> Conectar seu WhatsApp
+        </h1>
+        <p class="lead">Escaneie o QR Code abaixo com seu WhatsApp para começar a usar seu assistente personalizado.</p>
         
         <div id="status-display">
           <div class="status-indicator status-waiting">
@@ -171,6 +229,9 @@
         </div>
 
         <div id="countdown" class="countdown"></div>
+        <div id="phone-number" class="number-display d-none">
+          <i class="bi bi-whatsapp"></i> Conectado com: <span id="connected-number"></span>
+        </div>
         
         <div class="steps">
           <h4>Como conectar:</h4>
@@ -182,7 +243,10 @@
             <li>Escaneie o QR Code exibido acima</li>
           </ol>
           <div class="alert alert-info">
-            <i class="bi bi-info-circle"></i> Após a conexão bem-sucedida, você será redirecionado automaticamente para a página de configuração do bot.
+            <i class="bi bi-info-circle"></i> Após a conexão bem-sucedida, você será redirecionado automaticamente para a página de configuração do seu assistente.
+          </div>
+          <div class="alert alert-warning">
+            <i class="bi bi-exclamation-triangle"></i> O número do seu WhatsApp será usado como identificador único no sistema. Isso permitirá que suas configurações sejam salvas e vinculadas apenas ao seu número.
           </div>
         </div>
 
@@ -198,6 +262,19 @@
     </div>
   </main>
 
+  <footer class="bg-dark text-white py-4 mt-5">
+    <div class="container text-center">
+      <p class="mb-1">© 2025 WhatsGPT. Todos os direitos reservados a Nain Zahailo.</p>
+      <p class="mb-0">
+        <i class="bi bi-envelope me-1"></i> nzantunes1@gmail.com 
+        <span class="mx-2">|</span> 
+        <a href="https://wa.me/5547991097740" target="_blank" class="text-white text-decoration-none">
+          <i class="bi bi-whatsapp me-1"></i> (47) 99109-7740
+        </a>
+      </p>
+    </div>
+  </footer>
+
   <script src="/socket.io/socket.io.js"></script>
   <script>
     const socket = io();
@@ -206,28 +283,12 @@
     const countdownElement = document.getElementById('countdown');
     const refreshBtn = document.getElementById('refresh-btn');
     const configBtn = document.getElementById('config-btn');
+    const configNavItem = document.getElementById('config-nav-item');
+    const phoneNumberDisplay = document.getElementById('phone-number');
+    const connectedNumberElement = document.getElementById('connected-number');
     
     let qrCodeExpiryTime = 0;
     let countdownInterval;
-    let userId = null;
-    
-    // Obter o ID do usuário da sessão
-    async function getUserId() {
-      try {
-        const response = await fetch('/api/user-info');
-        const data = await response.json();
-        if (data.success && data.userId) {
-          userId = data.userId;
-          // Informar o socket sobre o ID do usuário
-          socket.emit('set-user-id', userId);
-          return userId;
-        }
-        return null;
-      } catch (error) {
-        console.error('Erro ao obter informações do usuário:', error);
-        return null;
-      }
-    }
     
     // Mostrar notificação
     function showNotification(message, type = 'success') {
@@ -262,6 +323,15 @@
         qrCodeExpiryTime = Date.now() + (5 * 60 * 1000);
         startCountdown();
         
+      } else if (status === 'authenticated') {
+        statusClass = 'status-connecting';
+        statusIcon = 'check-circle';
+        statusText = 'Autenticado! Estabelecendo conexão...';
+        
+        // Parar countdown
+        clearInterval(countdownInterval);
+        countdownElement.textContent = '';
+        
       } else if (status === 'connected') {
         statusClass = 'status-connected';
         statusIcon = 'check-circle';
@@ -274,6 +344,7 @@
         // Alterar botões
         refreshBtn.classList.add('d-none');
         configBtn.classList.remove('d-none');
+        configNavItem.classList.remove('d-none');
         
         // Mostrar notificação
         showNotification('WhatsApp conectado com sucesso! Redirecionando para configuração...', 'success');
@@ -287,6 +358,9 @@
         statusClass = 'status-disconnected';
         statusIcon = 'x-circle';
         statusText = 'WhatsApp desconectado';
+        
+        // Esconder informação do número
+        phoneNumberDisplay.classList.add('d-none');
         
         // Mostrar notificação
         showNotification('WhatsApp desconectado. Por favor, escaneie o QR Code novamente.', 'warning');
@@ -313,67 +387,65 @@
         
         if (timeLeft <= 0) {
           clearInterval(countdownInterval);
-          countdownElement.innerHTML = `<div class="expired-message"><i class="bi bi-exclamation-triangle"></i> QR Code expirado. Clique em "Atualizar QR Code".</div>`;
-          qrcodeElement.innerHTML = `
-            <div class="text-center">
-              <i class="bi bi-exclamation-triangle text-warning" style="font-size: 3rem;"></i>
-              <h5 class="mt-3 text-muted">QR Code expirado</h5>
+          countdownElement.innerHTML = `
+            <div class="expired-message">
+              <i class="bi bi-exclamation-circle"></i> QR Code expirado. 
+              <button class="btn btn-sm btn-warning ms-2" onclick="location.reload()">
+                Gerar novo QR Code
+              </button>
             </div>
           `;
           return;
         }
         
-        // Formatar tempo restante
         const minutes = Math.floor(timeLeft / 60000);
         const seconds = Math.floor((timeLeft % 60000) / 1000);
-        countdownElement.textContent = `QR Code expira em: ${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+        
+        countdownElement.textContent = `Este QR Code expira em ${minutes}:${seconds.toString().padStart(2, '0')}`;
       }, 1000);
     }
     
-    // Botão de atualizar QR Code
-    refreshBtn.addEventListener('click', function() {
-      qrcodeElement.innerHTML = `
-        <div class="spinner-border text-success" role="status">
-          <span class="visually-hidden">Carregando...</span>
-        </div>
-      `;
-      
-      updateStatus('waiting');
-      countdownElement.textContent = '';
-      
-      // Solicitar novo QR code
-      fetch('/get-qrcode')
-        .then(response => response.json())
-        .then(data => {
-          if (data.status === 'expired' || data.status === 'error') {
-            showNotification('Solicitando novo QR Code...', 'info');
-          }
-        })
-        .catch(error => {
-          console.error('Erro ao atualizar QR code:', error);
-          showNotification('Erro ao atualizar QR Code. Tente novamente.', 'danger');
-        });
-    });
+    // Atualizar número de telefone mostrado
+    function updatePhoneNumber(number) {
+      if (number) {
+        connectedNumberElement.textContent = formatPhoneNumber(number);
+        phoneNumberDisplay.classList.remove('d-none');
+      } else {
+        phoneNumberDisplay.classList.add('d-none');
+      }
+    }
     
-    // Informar o socket.io sobre o usuário conectado
-    socket.on('connect', async () => {
-      // Obter ID do usuário e informar o socket
-      await getUserId();
-      
-      // Solicitar status do WhatsApp
-      socket.emit('get-whatsapp-status');
+    // Formatar número de telefone
+    function formatPhoneNumber(number) {
+      // Se for número brasileiro, formatar como +55 (XX) XXXXX-XXXX
+      if (number.startsWith('55') && number.length >= 12) {
+        const ddd = number.substring(2, 4);
+        const parte1 = number.substring(4, 9);
+        const parte2 = number.substring(9);
+        return `+55 (${ddd}) ${parte1}-${parte2}`;
+      }
+      // Caso contrário, retornar com prefixo +
+      return `+${number}`;
+    }
+    
+    // Atualizar QR Code
+    refreshBtn.addEventListener('click', () => {
+      location.reload();
     });
     
     // Eventos do Socket.io
-    socket.on('qrcode', (qrcode) => {
-      qrcodeElement.innerHTML = `<img src="${qrcode}" alt="QR Code">`;
+    socket.on('qrcode', (dataUrl) => {
+      // Recebe a data URL já processada
+      console.log('QR Code recebido via socket');
+      qrcodeElement.innerHTML = `<img src="${dataUrl}" alt="QR Code">`;
       updateStatus('qr-received');
     });
     
-    socket.on('whatsappStatus', (status) => {
-      updateStatus(status);
+    socket.on('whatsapp-status', (data) => {
+      console.log('Status WhatsApp atualizado:', data);
+      updateStatus(data.status);
       
-      if (status === 'connected') {
+      if (data.status === 'connected') {
         qrcodeElement.innerHTML = `
           <div class="text-center">
             <i class="bi bi-check-circle-fill text-success" style="font-size: 4rem;"></i>
@@ -385,35 +457,35 @@
     });
     
     // Verificar status ao carregar a página
-    (async function() {
-      // Primeiro obter o ID do usuário
-      await getUserId();
-      
-      // Depois verificar o status do QR code
-      fetch('/get-qrcode')
-        .then(response => response.json())
-        .then(data => {
-          if (data.success && data.qrcode) {
-            qrcodeElement.innerHTML = `<img src="${data.qrcode}" alt="QR Code">`;
-            updateStatus('qr-received');
-          } else if (data.status === 'connected') {
-            updateStatus('connected');
-            qrcodeElement.innerHTML = `
-              <div class="text-center">
-                <i class="bi bi-check-circle-fill text-success" style="font-size: 4rem;"></i>
-                <h4 class="mt-3">WhatsApp conectado com sucesso!</h4>
-                <p class="text-muted">Redirecionando para configuração do bot...</p>
-              </div>
-            `;
-          } else {
-            showNotification('Gerando novo QR Code...', 'info');
+    fetch('/get-qrcode')
+      .then(response => response.json())
+      .then(data => {
+        console.log('Resposta da API get-qrcode:', data);
+        if (data.success && data.qrcode) {
+          qrcodeElement.innerHTML = `<img src="${data.qrcode}" alt="QR Code">`;
+          updateStatus('qr-received');
+        } else if (data.status === 'connected') {
+          updateStatus('connected');
+          
+          if (data.phoneNumber) {
+            updatePhoneNumber(data.phoneNumber);
           }
-        })
-        .catch(error => {
-          console.error('Erro ao carregar QR code:', error);
-          showNotification('Erro ao carregar QR Code. Tentando novamente...', 'danger');
-        });
-    })();
+          
+          qrcodeElement.innerHTML = `
+            <div class="text-center">
+              <i class="bi bi-check-circle-fill text-success" style="font-size: 4rem;"></i>
+              <h4 class="mt-3">WhatsApp conectado com sucesso!</h4>
+              <p class="text-muted">Redirecionando para configuração do bot...</p>
+            </div>
+          `;
+        } else {
+          showNotification('Gerando novo QR Code... Aguarde um momento.', 'info');
+        }
+      })
+      .catch(error => {
+        console.error('Erro ao carregar QR code:', error);
+        showNotification('Erro ao carregar QR Code. Tentando novamente...', 'danger');
+      });
   </script>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
