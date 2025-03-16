@@ -110,20 +110,19 @@
     }
     
     .config-list-item {
-      border-left: 4px solid transparent;
-      margin-bottom: 10px;
+      border-radius: 8px;
+      border: 1px solid #eee;
       transition: all 0.2s ease;
-      border-radius: 0 5px 5px 0;
     }
     
     .config-list-item:hover {
-      border-left-color: var(--primary-dark);
-      background-color: rgba(7, 94, 84, 0.05);
+      box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+      background-color: rgba(18, 140, 126, 0.05);
     }
     
     .config-list-item.active {
-      border-left-color: var(--primary-dark);
-      background-color: rgba(7, 94, 84, 0.1);
+      border-left: 4px solid var(--secondary-color);
+      background-color: rgba(37, 211, 102, 0.05);
     }
     
     .notification-container {
@@ -279,6 +278,19 @@
       padding: 0 1rem;
       color: #6c757d;
       font-weight: 600;
+    }
+    
+    /* Estilos para a prévia do prompt */
+    .prompt-preview {
+      background-color: rgba(0,0,0,0.03);
+      border-radius: 5px;
+      padding: 6px 8px;
+      font-size: 0.8rem;
+      color: #666;
+      border-left: 3px solid var(--primary-color);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
   </style>
 </head>

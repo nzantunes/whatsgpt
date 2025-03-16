@@ -1,28 +1,31 @@
 const { Sequelize } = require('sequelize');
-require('dotenv').config();
+const path = require('path');
 
-// Configuração do Sequelize para o banco de dados
+// Criar uma instância do Sequelize com SQLite
 const sequelize = new Sequelize({
   dialect: 'sqlite',
-  storage: './database.sqlite',  // Arquivo SQLite para armazenar os dados
-  logging: false,  // Desabilitar logs de SQL (em produção)
-  define: {
-    timestamps: true,
-    underscored: true
-  }
+  storage: path.join(__dirname, '../database.sqlite'),
+  logging: false
 });
 
-// Testar a conexão com o banco de dados
-const testConnection = async () => {
+// Função para testar a conexão com o banco de dados
+async function testConnection() {
   try {
     await sequelize.authenticate();
     console.log('✅ Conexão com o banco de dados estabelecida com sucesso.');
+    
+    // Forçar sincronização das tabelas
+    await sequelize.sync({ force: false, alter: true });
+    console.log('✅ Tabelas do banco de dados sincronizadas com sucesso.');
+    
+    return true;
   } catch (error) {
-    console.error('❌ Erro ao conectar com o banco de dados:', error);
+    console.error('❌ Não foi possível conectar ao banco de dados:', error);
+    return false;
   }
-};
+}
 
-// Executar teste de conexão
-testConnection();
-
-module.exports = sequelize; 
+module.exports = {
+  sequelize,
+  testConnection
+}; 

@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste de Upload de Arquivos</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        button {
+            padding: 10px 15px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        .response {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f0f0f0;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Teste de Upload de Arquivos WhatGPT</h1>
+    
+    <div class="form-group">
+        <label for="phoneNumber">Número de telefone:</label>
+        <input type="text" id="phoneNumber" value="554791097740">
+    </div>
+    
+    <div class="form-group">
+        <label for="configId">ID da Configuração:</label>
+        <input type="text" id="configId" value="1">
+    </div>
+    
+    <div class="form-group">
+        <label for="fileType">Tipo de Arquivo:</label>
+        <select id="fileType">
+            <option value="pdf">PDF</option>
+            <option value="excel">Excel</option>
+            <option value="csv">CSV</option>
+            <option value="txt">TXT</option>
+        </select>
+    </div>
+    
+    <div class="form-group">
+        <label for="file">Selecione o Arquivo:</label>
+        <input type="file" id="file">
+    </div>
+    
+    <div class="form-group">
+        <label>Tipo de Teste:</label>
+        <div>
+            <input type="radio" id="routeNormal" name="testRoute" value="normal" checked>
+            <label for="routeNormal">Rota Normal</label>
+            
+            <input type="radio" id="routeSimple" name="testRoute" value="simple">
+            <label for="routeSimple">Rota Simplificada (Apenas Teste)</label>
+        </div>
+    </div>
+    
+    <button id="uploadBtn">Fazer Upload</button>
+    
+    <div class="response" id="response">
+        <h3>Resposta:</h3>
+        <pre id="responseText"></pre>
+    </div>
+
+    <script>
+        document.getElementById('uploadBtn').addEventListener('click', async function() {
+            const phoneNumber = document.getElementById('phoneNumber').value;
+            const configId = document.getElementById('configId').value;
+            const fileType = document.getElementById('fileType').value;
+            const fileInput = document.getElementById('file');
+            const responseText = document.getElementById('responseText');
+            
+            // Verificar se um arquivo foi selecionado
+            if (!fileInput.files || fileInput.files.length === 0) {
+                responseText.textContent = 'Erro: Nenhum arquivo selecionado';
+                return;
+            }
+            
+            // Criar FormData
+            const formData = new FormData();
+            
+            // Verificar qual rota usar
+            const useSimpleRoute = document.getElementById('routeSimple').checked;
+            
+            try {
+                // Mostrar que está enviando
+                responseText.textContent = 'Enviando...';
+                
+                let response;
+                
+                if (useSimpleRoute) {
+                    formData.append('file', fileInput.files[0]);
+                    formData.append('fileType', fileType);
+                    
+                    // Fazer a requisição para a rota simples
+                    response = await fetch('http://localhost:3000/api/upload-test', {
+                        method: 'POST',
+                        body: formData
+                    });
+                } else {
+                    formData.append('files', fileInput.files[0]);
+                    formData.append('phoneNumber', phoneNumber);
+                    formData.append('fileType', fileType);
+                    
+                    // Fazer a requisição para a rota normal
+                    response = await fetch(`http://localhost:3000/api/config/${configId}/upload-files`, {
+                        method: 'POST',
+                        body: formData
+                    });
+                }
+                
+                // Obter detalhes da resposta
+                let responseDetails = `Status: ${response.status}\n`;
+                responseDetails += `Status Text: ${response.statusText}\n\n`;
+                
+                try {
+                    // Tentar obter os dados como JSON
+                    const data = await response.json();
+                    responseDetails += `Dados: ${JSON.stringify(data, null, 2)}`;
+                } catch (e) {
+                    // Se não for JSON, obter como texto
+                    const text = await response.text();
+                    responseDetails += `Resposta não é JSON válido:\n${text.substring(0, 500)}${text.length > 500 ? '...' : ''}`;
+                    
+                    // Adicionar detalhes do erro para ajudar a depurar
+                    responseDetails += `\n\nErro ao analisar JSON: ${e.message}`;
+                    
+                    // Se o texto começar com caracteres HTML, mencionar que a resposta é provavelmente HTML
+                    if (text.trim().startsWith('<!') || text.trim().startsWith('<html')) {
+                        responseDetails += '\n\nA resposta parece ser HTML, não JSON. Possível erro 500 ou redirecionamento.';
+                    }
+                }
+                
+                // Mostrar resposta
+                responseText.textContent = responseDetails;
+            } catch (error) {
+                // Mostrar erro
+                responseText.textContent = `Erro: ${error.message}`;
+            }
+        });
+    </script>
+</body>
+</html> 

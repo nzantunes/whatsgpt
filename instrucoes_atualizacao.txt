@@ -1,0 +1,29 @@
+Instruções para atualizar o servidor manualmente:
+
+1. Conecte-se ao servidor via SSH:
+   ssh root@212.85.0.163
+   (use a senha: F1606f!)
+
+2. Navegue até o diretório do aplicativo:
+   cd /var/www/whatsgpt
+
+3. Salve quaisquer alterações locais (se necessário):
+   git stash
+
+4. Atualize o repositório para a versão mais recente:
+   git pull origin master
+
+5. Se estiver usando o método de autenticação HTTPS e solicitar nome de usuário/senha:
+   - Use seu nome de usuário do GitHub
+   - Use um token de acesso pessoal como senha (ou sua senha do GitHub, se ainda permitido)
+
+6. Alternativamente, você pode mudar para SSH:
+   git remote set-url origin git@github.com:nzantunes/whatsgpt.git
+
+7. Após a atualização, reinicie o aplicativo:
+   pm2 restart all
+
+8. Para verificar o status:
+   pm2 status
+
+Estas instruções devem ajudar a atualizar o servidor para a versão mais recente do código que você acabou de enviar para o GitHub. 

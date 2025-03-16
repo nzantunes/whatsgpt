@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Criar Novo Bot Config</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input, select, textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            padding: 10px 15px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .response {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f0f0f0;
+            border-radius: 5px;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <h1>Criar Novo Bot Config</h1>
+    
+    <div class="form-group">
+        <label for="phoneNumber">Número de telefone:</label>
+        <input type="text" id="phoneNumber" value="554799887766">
+    </div>
+    
+    <div class="form-group">
+        <label for="name">Nome do Bot:</label>
+        <input type="text" id="name" value="Novo Bot de Teste">
+    </div>
+    
+    <div class="form-group">
+        <label for="greeting">Mensagem de Saudação:</label>
+        <textarea id="greeting" rows="3">Olá! Eu sou um novo bot de teste. Como posso ajudar?</textarea>
+    </div>
+    
+    <div class="form-group">
+        <label for="systemPrompt">System Prompt:</label>
+        <textarea id="systemPrompt" rows="5">Você é um assistente virtual amigável. Seu nome é Novo Bot de Teste. Responda de forma cordial e precisa.</textarea>
+    </div>
+    
+    <button id="createBtn">Criar Bot Config</button>
+    
+    <div class="response" id="response">
+        <h3>Resposta:</h3>
+        <pre id="responseText"></pre>
+    </div>
+
+    <h2>Teste de Upload para o Novo Bot Config</h2>
+    
+    <div class="form-group">
+        <label for="configId">ID da Configuração (preencher após criar):</label>
+        <input type="text" id="configId" value="2">
+    </div>
+    
+    <div class="form-group">
+        <label for="fileType">Tipo de Arquivo:</label>
+        <select id="fileType">
+            <option value="pdf">PDF</option>
+            <option value="excel">Excel</option>
+            <option value="csv">CSV</option>
+            <option value="txt">TXT</option>
+        </select>
+    </div>
+    
+    <div class="form-group">
+        <label for="file">Selecione o Arquivo:</label>
+        <input type="file" id="file">
+    </div>
+    
+    <button id="uploadBtn">Fazer Upload</button>
+    
+    <div class="response" id="uploadResponse">
+        <h3>Resposta do Upload:</h3>
+        <pre id="uploadResponseText"></pre>
+    </div>
+
+    <script>
+        document.getElementById('createBtn').addEventListener('click', async function() {
+            const phoneNumber = document.getElementById('phoneNumber').value;
+            const name = document.getElementById('name').value;
+            const greeting = document.getElementById('greeting').value;
+            const systemPrompt = document.getElementById('systemPrompt').value;
+            const responseText = document.getElementById('responseText');
+            
+            responseText.textContent = 'Criando configuração...';
+            
+            try {
+                const response = await fetch('http://localhost:3000/api/bot-config', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        phoneNumber,
+                        name,
+                        greeting_message: greeting,
+                        system_prompt: systemPrompt,
+                        model: 'gpt-3.5-turbo',
+                        temperature: 0.7,
+                        is_active: true
+                    })
+                });
+                
+                const responseData = await response.json();
+                
+                if (response.ok) {
+                    // Se a criação for bem-sucedida, atualizar o ID da configuração
+                    if (responseData.config && responseData.config.id) {
+                        document.getElementById('configId').value = responseData.config.id;
+                    }
+                }
+                
+                responseText.textContent = JSON.stringify(responseData, null, 2);
+            } catch (error) {
+                responseText.textContent = `Erro: ${error.message}`;
+            }
+        });
+        
+        document.getElementById('uploadBtn').addEventListener('click', async function() {
+            const phoneNumber = document.getElementById('phoneNumber').value;
+            const configId = document.getElementById('configId').value;
+            const fileType = document.getElementById('fileType').value;
+            const fileInput = document.getElementById('file');
+            const responseText = document.getElementById('uploadResponseText');
+            
+            if (!fileInput.files || fileInput.files.length === 0) {
+                responseText.textContent = 'Erro: Nenhum arquivo selecionado';
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('files', fileInput.files[0]);
+            formData.append('phoneNumber', phoneNumber);
+            formData.append('fileType', fileType);
+            
+            responseText.textContent = 'Enviando arquivo...';
+            
+            try {
+                const response = await fetch(`http://localhost:3000/api/bot-config/${configId}/upload-files`, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                // Obter detalhes da resposta
+                let responseDetails = `Status: ${response.status}\n`;
+                responseDetails += `Status Text: ${response.statusText}\n\n`;
+                
+                try {
+                    // Tentar obter os dados como JSON
+                    const data = await response.json();
+                    responseDetails += `Dados: ${JSON.stringify(data, null, 2)}`;
+                } catch (e) {
+                    // Se não for JSON, obter como texto
+                    const text = await response.text();
+                    responseDetails += `Resposta não é JSON válido:\n${text.substring(0, 500)}${text.length > 500 ? '...' : ''}`;
+                }
+                
+                responseText.textContent = responseDetails;
+            } catch (error) {
+                responseText.textContent = `Erro: ${error.message}`;
+            }
+        });
+    </script>
+</body>
+</html> 

@@ -1,19 +1,27 @@
-const { User, findUserByEmail, addUser } = require('./User');
-const { BotConfig } = require('./BotConfig');
-const { EmailConfig } = require('./EmailConfig');
-const { Conversation } = require('./Conversation');
+// Exportar todos os modelos de uma vez
+const { User, findUserByEmail, findUserByWhatsAppNumber, addOrUpdateWhatsAppUser, addUser } = require('./User');
+const BotConfig = require('./botconfig');
+const Conversation = require('./Conversation');
+const EmailConfig = require('./EmailConfig');
+const { QRCodeSession, findSessionById, createSession, updateSessionQRCode, updateSessionStatus } = require('./qrcodeSession');
 const { WhatsAppUser, findOrCreateWhatsAppUser, findWhatsAppUserByPhone } = require('./WhatsAppUser');
-const sequelize = require('../db/database');
-const bcrypt = require('bcrypt');
 
 module.exports = {
   User,
   BotConfig,
-  EmailConfig,
   Conversation,
+  EmailConfig,
+  QRCodeSession,
   WhatsAppUser,
-  addUser,
+  // Funções auxiliares
   findUserByEmail,
+  findUserByWhatsAppNumber,
+  addOrUpdateWhatsAppUser,
+  addUser,
+  findSessionById,
+  createSession,
+  updateSessionQRCode,
+  updateSessionStatus,
   findOrCreateWhatsAppUser,
   findWhatsAppUserByPhone
 }; 

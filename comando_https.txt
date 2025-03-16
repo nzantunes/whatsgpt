@@ -1,0 +1,12 @@
+# Execute este comando no servidor para mudar para HTTPS:
+git remote set-url origin https://github.com/nzantunes/whatsgpt.git
+
+# Então execute este comando para atualizar:
+git pull
+
+# Se pedir nome de usuário e senha:
+# - Use seu nome de usuário do GitHub
+# - Use seu token de acesso pessoal ou senha
+
+# Depois reinicie o aplicativo:
+pm2 restart all 

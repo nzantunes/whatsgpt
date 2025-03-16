@@ -1,7 +1,8 @@
 const { DataTypes } = require('sequelize');
-const db = require('../db/database');
+const { sequelize } = require('../db/database');
 
-const WhatsAppUser = db.define('whatsapp_users', {
+// Definição do modelo WhatsAppUser
+const WhatsAppUser = sequelize.define('whatsappusers', {
   id: {
     type: DataTypes.INTEGER,
     primaryKey: true,
@@ -10,58 +11,82 @@ const WhatsAppUser = db.define('whatsapp_users', {
   phone_number: {
     type: DataTypes.STRING,
     allowNull: false,
-    unique: true,
-    comment: 'Número do WhatsApp no formato internacional (ex: 5511999999999)'
+    unique: true
   },
   name: {
     type: DataTypes.STRING,
-    allowNull: true,
-    comment: 'Nome do usuário obtido do perfil do WhatsApp'
-  },
-  is_active: {
-    type: DataTypes.BOOLEAN,
-    defaultValue: true,
     allowNull: false
+  },
+  user_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true
   },
   last_interaction: {
     type: DataTypes.DATE,
+    allowNull: false,
+    defaultValue: DataTypes.NOW
+  },
+  is_active: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: true
+  },
+  // Campo para armazenar o caminho do banco de dados específico do usuário
+  db_path: {
+    type: DataTypes.STRING,
     allowNull: true
   },
+  // Flag para indicar se o banco de dados específico já foi criado
+  db_initialized: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: false
+  },
   created_at: {
+    type: DataTypes.DATE,
+    defaultValue: DataTypes.NOW
+  },
+  updated_at: {
     type: DataTypes.DATE,
     defaultValue: DataTypes.NOW
   }
 }, {
   timestamps: true,
+  createdAt: 'created_at',
+  updatedAt: 'updated_at',
   underscored: true
 });
 
-// Função para encontrar ou criar um usuário do WhatsApp
+// Funções auxiliares
 async function findOrCreateWhatsAppUser(phoneNumber, name = null) {
-  const [user, created] = await WhatsAppUser.findOrCreate({
-    where: { phone_number: phoneNumber },
-    defaults: {
-      name: name,
-      last_interaction: new Date()
-    }
-  });
-  
-  if (!created) {
-    // Atualizar último acesso e nome se fornecido
-    const updateData = { last_interaction: new Date() };
-    if (name) updateData.name = name;
-    
-    await user.update(updateData);
-  }
-  
-  return user;
-}
-
-// Função para encontrar usuário por número
-async function findWhatsAppUserByPhone(phoneNumber) {
-  return await WhatsAppUser.findOne({ 
+  // Buscar usuário
+  let whatsappUser = await WhatsAppUser.findOne({
     where: { phone_number: phoneNumber }
   });
+  
+  // Se não existir, criar
+  if (!whatsappUser) {
+    whatsappUser = await WhatsAppUser.create({
+      phone_number: phoneNumber,
+      name: name || `WhatsApp User ${phoneNumber}`,
+      last_interaction: new Date(),
+      is_active: true
+    });
+    
+    console.log(`Novo usuário WhatsApp criado: ${phoneNumber}`);
+  } else {
+    // Atualizar última interação
+    await whatsappUser.update({ 
+      last_interaction: new Date(),
+      name: name || whatsappUser.name
+    });
+  }
+  
+  return whatsappUser;
+}
+
+async function findWhatsAppUserByPhone(phoneNumber) {
+  return await WhatsAppUser.findOne({ where: { phone_number: phoneNumber } });
 }
 
 module.exports = {

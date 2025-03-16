@@ -1,0 +1,19 @@
+<!-- Adicionar em algum local visível da página -->
+<div class="card mb-4">
+  <div class="card-header">
+    <h5>Conexão WhatsApp</h5>
+  </div>
+  <div class="card-body">
+    <% if (isWhatsAppAuth) { %>
+      <p class="text-success"><i class="fas fa-check-circle"></i> WhatsApp conectado</p>
+      <a href="/new-qrcode" class="btn btn-outline-primary">
+        <i class="fas fa-qrcode"></i> Gerar novo QR Code
+      </a>
+    <% } else { %>
+      <p class="text-warning"><i class="fas fa-exclamation-circle"></i> WhatsApp não conectado</p>
+      <a href="/qrcode" class="btn btn-primary">
+        <i class="fas fa-qrcode"></i> Conectar WhatsApp
+      </a>
+    <% } %>
+  </div>
+</div> 

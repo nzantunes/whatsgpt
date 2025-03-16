@@ -1,46 +1,54 @@
 const { DataTypes } = require('sequelize');
-const db = require('../db/database');
+const { sequelize } = require('../db/database');
 
-// Modelo para armazenar mensagens de conversa
-const Conversation = db.define('Conversation', {
+// Definição do modelo Conversation
+const Conversation = sequelize.define('conversation', {
   id: {
     type: DataTypes.INTEGER,
     primaryKey: true,
     autoIncrement: true
   },
-  phone_number: {
-    type: DataTypes.STRING,
-    allowNull: false,
-    comment: 'Número de telefone do usuário'
-  },
-  user_message: {
-    type: DataTypes.TEXT,
-    allowNull: false,
-    comment: 'Mensagem enviada pelo usuário'
-  },
-  bot_response: {
-    type: DataTypes.TEXT,
-    allowNull: false,
-    comment: 'Resposta enviada pelo bot'
+  user_id: {
+    type: DataTypes.INTEGER,
+    allowNull: false
   },
   config_id: {
     type: DataTypes.INTEGER,
-    allowNull: true,
-    comment: 'ID da configuração do bot usada na resposta'
+    allowNull: false
   },
-  is_useful: {
-    type: DataTypes.BOOLEAN,
-    allowNull: true,
-    comment: 'Indicador de utilidade da resposta (feedback)'
-  },
-  metadata: {
+  message: {
     type: DataTypes.TEXT,
-    allowNull: true,
-    comment: 'Metadados adicionais em formato JSON'
+    allowNull: false
+  },
+  response: {
+    type: DataTypes.TEXT,
+    allowNull: false
+  },
+  context_used: {
+    type: DataTypes.TEXT,
+    allowNull: true
+  },
+  tokens_used: {
+    type: DataTypes.INTEGER,
+    allowNull: true
+  },
+  processing_time: {
+    type: DataTypes.FLOAT,
+    allowNull: true
+  },
+  model_used: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+  created_at: {
+    type: DataTypes.DATE,
+    defaultValue: DataTypes.NOW
   }
 }, {
   timestamps: true,
-  tableName: 'conversations'
+  createdAt: 'created_at',
+  updatedAt: false,
+  underscored: true
 });
 
 module.exports = Conversation; 

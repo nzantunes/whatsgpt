@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Configuração do Bot - WhatGPT</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css">
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #f5f5f5;
+      padding-bottom: 50px;
+    }
+    .header {
+      background-color: #075e54;
+      color: white;
+      padding: 15px 0;
+      margin-bottom: 30px;
+    }
+    .config-container {
+      max-width: 800px;
+      margin: 0 auto;
+      background-color: #fff;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      padding: 25px;
+    }
+    .user-info {
+      display: flex;
+      align-items: center;
+      margin-bottom: 20px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid #eee;
+    }
+    .user-avatar {
+      width: 60px;
+      height: 60px;
+      background-color: #25d366;
+      color: white;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      margin-right: 15px;
+    }
+    .user-details h3 {
+      margin: 0;
+      font-size: 20px;
+    }
+    .user-phone {
+      color: #666;
+      font-size: 14px;
+    }
+    .config-list {
+      margin-top: 25px;
+    }
+    .config-card {
+      background-color: #f9f9f9;
+      border-radius: 8px;
+      padding: 15px;
+      margin-bottom: 15px;
+      position: relative;
+    }
+    .config-card.active {
+      background-color: #e7f7e7;
+      border-left: 4px solid #25d366;
+    }
+    .config-title {
+      font-weight: 600;
+      font-size: 18px;
+      margin-bottom: 8px;
+    }
+    .config-model {
+      font-size: 13px;
+      color: #666;
+      margin-bottom: 10px;
+    }
+    .config-prompt {
+      font-size: 14px;
+      color: #333;
+      background-color: #fff;
+      padding: 10px;
+      border-radius: 6px;
+      border: 1px solid #eee;
+    }
+    .config-actions {
+      position: absolute;
+      top: 15px;
+      right: 15px;
+    }
+    .badge-active {
+      background-color: #25d366;
+      color: white;
+      padding: 5px 10px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+    .prompt-container {
+      margin-top: 30px;
+    }
+    textarea {
+      resize: vertical;
+      min-height: 120px;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="container">
+      <h2>WhatGPT - Configuração</h2>
+    </div>
+  </div>
+
+  <div class="container">
+    <div class="config-container">
+      <div class="user-info">
+        <div class="user-avatar">
+          <%= user.name ? user.name.charAt(0).toUpperCase() : 'U' %>
+        </div>
+        <div class="user-details">
+          <h3><%= user.name || 'Usuário WhatsApp' %></h3>
+          <div class="user-phone">+<%= user.phone_number %></div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="col-md-12">
+          <h4>Suas configurações de bot</h4>
+          <p>Personalize como o bot responde às suas mensagens no WhatsApp.</p>
+
+          <div class="config-list">
+            <% configs.forEach(config => { %>
+              <div class="config-card <%= config.is_active ? 'active' : '' %>">
+                <div class="config-title"><%= config.name %></div>
+                <div class="config-model">Modelo: <%= config.model %></div>
+                <div class="config-prompt"><%= config.prompt %></div>
+                
+                <div class="config-actions">
+                  <% if (config.is_active) { %>
+                    <span class="badge-active">Ativo</span>
+                  <% } else { %>
+                    <button class="btn btn-sm btn-outline-success activate-btn" data-id="<%= config.id %>">Ativar</button>
+                  <% } %>
+                  <button class="btn btn-sm btn-outline-primary edit-btn" data-id="<%= config.id %>">Editar</button>
+                </div>
+              </div>
+            <% }); %>
+          </div>
+
+          <button class="btn btn-primary mt-3" id="new-config-btn">Nova Configuração</button>
+        </div>
+      </div>
+
+      <div class="prompt-container mt-4" id="edit-form" style="display: none;">
+        <h4 id="form-title">Editar Configuração</h4>
+        <form id="config-form">
+          <input type="hidden" id="config-id" name="id">
+          <div class="mb-3">
+            <label for="config-name" class="form-label">Nome da Configuração</label>
+            <input type="text" class="form-control" id="config-name" name="name" required>
+          </div>
+          <div class="mb-3">
+            <label for="config-model" class="form-label">Modelo</label>
+            <select class="form-select" id="config-model" name="model">
+              <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
+              <option value="gpt-4">GPT-4</option>
+              <option value="gpt-4-turbo">GPT-4 Turbo</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label for="config-prompt" class="form-label">Prompt do Sistema</label>
+            <textarea class="form-control" id="config-prompt" name="prompt" required></textarea>
+            <div class="form-text">Defina a personalidade e comportamento do seu assistente.</div>
+          </div>
+          <div class="d-flex justify-content-between">
+            <button type="button" class="btn btn-outline-secondary" id="cancel-btn">Cancelar</button>
+            <button type="submit" class="btn btn-success">Salvar Configuração</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      // Elementos da página
+      const newConfigBtn = document.getElementById('new-config-btn');
+      const editForm = document.getElementById('edit-form');
+      const configForm = document.getElementById('config-form');
+      const formTitle = document.getElementById('form-title');
+      const cancelBtn = document.getElementById('cancel-btn');
+      const configId = document.getElementById('config-id');
+      const configName = document.getElementById('config-name');
+      const configModel = document.getElementById('config-model');
+      const configPrompt = document.getElementById('config-prompt');
+      
+      // Botões de editar
+      document.querySelectorAll('.edit-btn').forEach(btn => {
+        btn.addEventListener('click', async function() {
+          const id = this.getAttribute('data-id');
+          formTitle.textContent = 'Editar Configuração';
+          editForm.style.display = 'block';
+          
+          try {
+            // Buscar dados da configuração
+            const response = await fetch(`/api/bot-config/${id}`);
+            const data = await response.json();
+            
+            if (data.success) {
+              configId.value = data.config.id;
+              configName.value = data.config.name;
+              configModel.value = data.config.model;
+              configPrompt.value = data.config.prompt;
+              
+              // Scroll para o formulário
+              editForm.scrollIntoView({ behavior: 'smooth' });
+            }
+          } catch (error) {
+            console.error('Erro ao buscar configuração:', error);
+            alert('Erro ao buscar detalhes da configuração');
+          }
+        });
+      });
+      
+      // Botões de ativar
+      document.querySelectorAll('.activate-btn').forEach(btn => {
+        btn.addEventListener('click', async function() {
+          const id = this.getAttribute('data-id');
+          
+          try {
+            const response = await fetch(`/api/bot-config/${id}/activate`, {
+              method: 'POST'
+            });
+            
+            if (response.ok) {
+              // Recarregar a página para mostrar a mudança
+              window.location.reload();
+            } else {
+              alert('Erro ao ativar configuração');
+            }
+          } catch (error) {
+            console.error('Erro ao ativar configuração:', error);
+            alert('Erro ao ativar configuração');
+          }
+        });
+      });
+      
+      // Botão de nova configuração
+      newConfigBtn.addEventListener('click', function() {
+        formTitle.textContent = 'Nova Configuração';
+        configId.value = '';
+        configName.value = '';
+        configModel.value = 'gpt-3.5-turbo';
+        configPrompt.value = 'Você é um assistente virtual amigável e prestativo.';
+        
+        editForm.style.display = 'block';
+        editForm.scrollIntoView({ behavior: 'smooth' });
+      });
+      
+      // Botão de cancelar
+      cancelBtn.addEventListener('click', function() {
+        editForm.style.display = 'none';
+      });
+      
+      // Envio do formulário
+      configForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const formData = {
+          id: configId.value,
+          name: configName.value,
+          model: configModel.value,
+          prompt: configPrompt.value
+        };
+        
+        try {
+          const url = formData.id 
+            ? `/api/bot-config/${formData.id}` 
+            : '/api/bot-config';
+            
+          const method = formData.id ? 'PUT' : 'POST';
+          
+          const response = await fetch(url, {
+            method: method,
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(formData)
+          });
+          
+          if (response.ok) {
+            // Recarregar a página para mostrar a nova configuração
+            window.location.reload();
+          } else {
+            const data = await response.json();
+            alert(`Erro: ${data.message || 'Erro ao salvar configuração'}`);
+          }
+        } catch (error) {
+          console.error('Erro ao salvar configuração:', error);
+          alert('Erro ao salvar configuração');
+        }
+      });
+    });
+  </script>
+</body>
+</html> 

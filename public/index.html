@@ -1,231 +1,632 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-br">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>WhatsGPT - Assistente Inteligente para WhatsApp</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
   <style>
+        :root {
+            --primary-color: #25d366;
+            --primary-dark: #1a9f4b;
+            --secondary-color: #075e54;
+            --light-color: #f8f9fa;
+            --dark-color: #202c33;
+            --gray-color: #8696a0;
+            --border-radius: 10px;
+            --box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
     body {
-      background-color: #f5f5f5;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      padding-bottom: 50px;
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      background-color: #f5f8fa;
+      color: #333;
+            line-height: 1.6;
     }
-    .hero-section {
-      background-color: #075e54;
-      color: white;
-      padding: 80px 0;
-      margin-bottom: 50px;
+
+    .navbar {
+      background-color: var(--secondary-color);
+      padding: 15px 0;
+      box-shadow: var(--box-shadow);
     }
-    .card {
-      border-radius: 15px;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-      margin-bottom: 30px;
-      overflow: hidden;
-      transition: transform 0.3s ease;
-      height: 100%;
-    }
-    .card:hover {
-      transform: translateY(-5px);
-    }
-    .card-header {
-      background-color: #075e54;
-      color: white;
-      font-weight: 600;
-      padding: 15px 20px;
-    }
-    .btn-success {
-      background-color: #075e54;
-      border-color: #075e54;
-    }
-    .btn-success:hover {
-      background-color: #064942;
-      border-color: #064942;
-    }
-    .feature-icon {
-      font-size: 2.5rem;
-      color: #075e54;
-      margin-bottom: 20px;
-      display: block;
-      text-align: center;
-    }
-    .notification-container {
-      position: fixed;
-      top: 20px;
-      right: 20px;
-      z-index: 9999;
-    }
-    .notification {
-      background-color: white;
-      border-left: 4px solid #075e54;
-      padding: 15px 20px;
-      margin-bottom: 10px;
-      border-radius: 5px;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-      display: flex;
-      align-items: center;
-      animation: slideIn 0.3s ease;
-    }
-    @keyframes slideIn {
-      from {
-        transform: translateX(100%);
-        opacity: 0;
-      }
-      to {
-        transform: translateX(0);
-        opacity: 1;
-      }
-    }
-    .logo-text {
+
+    .navbar-brand {
       font-weight: 700;
-      letter-spacing: -0.5px;
+      font-size: 24px;
+      color: white;
+        }
+
+    .navbar-nav .nav-link {
+      color: rgba(255, 255, 255, 0.85);
+      font-weight: 500;
+      padding: 0.5rem 1rem;
+      transition: color 0.3s;
     }
-    .logo-highlight {
-      color: #25D366;
+
+    .navbar-nav .nav-link:hover {
+      color: white;
+        }
+
+    .hero {
+      padding: 100px 0 120px;
+      background: linear-gradient(135deg, var(--secondary-color), var(--primary-dark));
+      color: white;
+            text-align: center;
+      position: relative;
+      overflow: hidden;
     }
-    .qr-connect-card {
-      max-width: 500px;
-      margin: 0 auto;
-      background: white;
+
+    .hero h1 {
+      font-size: 3.5rem;
+      font-weight: 700;
+      margin-bottom: 1.5rem;
+        }
+
+    .hero p {
+      font-size: 1.25rem;
+      margin-bottom: 2rem;
+            opacity: 0.9;
+        }
+
+    .hero::after {
+      content: '';
+      position: absolute;
+      bottom: -5px;
+      left: 0;
+      width: 100%;
+      height: 70px;
+      background-color: #f5f8fa;
+      clip-path: polygon(0 50%, 100% 0, 100% 100%, 0% 100%);
+    }
+
+    .hero-btn {
+      background-color: white;
+      color: var(--secondary-color);
+      font-weight: 600;
+      font-size: 1.1rem;
+      padding: 12px 32px;
+      border-radius: 50px;
+      transition: all 0.3s;
+      border: 2px solid white;
+      text-decoration: none;
+      display: inline-block;
+      margin: 10px;
+    }
+
+    .hero-btn:hover {
+      background-color: transparent;
+      color: white;
+    }
+
+    .hero-btn-outline {
+      background-color: transparent;
+      color: white;
+      border: 2px solid white;
+    }
+
+    .hero-btn-outline:hover {
+      background-color: white;
+      color: var(--secondary-color);
+    }
+
+    .section {
+      padding: 80px 0;
+    }
+
+    .section-title {
+      font-weight: 700;
+      font-size: 2.5rem;
+      margin-bottom: 1.5rem;
+      color: var(--secondary-color);
+    }
+
+    .section-subtitle {
+      font-size: 1.25rem;
+      margin-bottom: 3rem;
+      color: #666;
+    }
+
+    .feature-card {
+            background-color: white;
+            border-radius: var(--border-radius);
+            box-shadow: var(--box-shadow);
       padding: 30px;
-      border-radius: 15px;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+      margin-bottom: 30px;
+      height: 100%;
+      transition: transform 0.3s, box-shadow 0.3s;
+    }
+
+    .feature-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+    }
+
+    .feature-icon {
+      font-size: 48px;
+      margin-bottom: 20px;
+      color: var(--primary-color);
+    }
+
+    .feature-title {
+      font-weight: 600;
+      font-size: 1.25rem;
+      margin-bottom: 15px;
+      color: var(--secondary-color);
+        }
+
+    .testimonial-card {
+      background-color: white;
+      border-radius: var(--border-radius);
+      box-shadow: var(--box-shadow);
+      padding: 30px;
+      margin: 20px 10px;
       text-align: center;
     }
-    .connect-icon {
-      font-size: 4rem;
-      color: #075e54;
-      margin-bottom: 1rem;
-    }
-    .steps-container {
-      max-width: 800px;
-      margin: 0 auto;
-    }
-    .step-card {
-      background-color: white;
-      border-radius: 10px;
-      padding: 20px;
+
+    .testimonial-text {
+      font-style: italic;
       margin-bottom: 20px;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+      color: #555;
     }
+
+    .testimonial-author {
+      font-weight: 600;
+      color: var(--secondary-color);
+    }
+
+    .testimonial-role {
+      font-size: 0.9rem;
+      color: #777;
+    }
+
+    .stats-section {
+      background-color: var(--secondary-color);
+      color: white;
+      padding: 60px 0;
+    }
+
+    .stat-value {
+      font-size: 3rem;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+
+    .stat-label {
+      font-size: 1.1rem;
+      opacity: 0.9;
+    }
+
+    .cta-section {
+      background-color: #f0f5f4;
+      padding: 80px 0;
+      text-align: center;
+    }
+
+    .footer {
+      background-color: var(--dark-color);
+      color: white;
+      padding: 50px 0 20px;
+        }
+
+    .footer-title {
+      font-weight: 600;
+      margin-bottom: 20px;
+      font-size: 1.2rem;
+        }
+
+    .footer-links {
+      list-style: none;
+      padding: 0;
+    }
+
+    .footer-links li {
+      margin-bottom: 10px;
+    }
+
+    .footer-links a {
+      color: rgba(255, 255, 255, 0.8);
+      text-decoration: none;
+      transition: color 0.3s;
+        }
+
+    .footer-links a:hover {
+      color: white;
+        }
+
+    .social-links {
+      font-size: 22px;
+            margin-top: 20px;
+    }
+
+    .social-links a {
+      color: rgba(255, 255, 255, 0.8);
+      margin-right: 15px;
+      transition: color 0.3s;
+    }
+
+    .social-links a:hover {
+      color: white;
+    }
+
+    .copyright {
+      text-align: center;
+      padding-top: 30px;
+      margin-top: 40px;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+      font-size: 0.9rem;
+      color: rgba(255, 255, 255, 0.7);
+    }
+
+    .steps-card {
+      background-color: white;
+      border-radius: var(--border-radius);
+      box-shadow: var(--box-shadow);
+      padding: 40px;
+      position: relative;
+        }
+
+        .step {
+            display: flex;
+      align-items: flex-start;
+      margin-bottom: 25px;
+      position: relative;
+        }
+
     .step-number {
-      display: inline-flex;
+      width: 36px;
+      height: 36px;
+            background-color: var(--primary-color);
+            color: white;
+            border-radius: 50%;
+            display: flex;
       align-items: center;
       justify-content: center;
-      width: 30px;
-      height: 30px;
-      background-color: #075e54;
-      color: white;
-      border-radius: 50%;
-      margin-right: 10px;
-      font-weight: bold;
+            font-weight: bold;
+      margin-right: 20px;
+            flex-shrink: 0;
+      font-size: 1.1rem;
+      z-index: 1;
+        }
+
+    .step-content {
+            flex-grow: 1;
+        }
+
+    .step-title {
+      font-weight: 600;
+      font-size: 1.1rem;
+      margin-bottom: 5px;
+      color: var(--secondary-color);
+    }
+
+    .step-description {
+      color: #666;
+    }
+
+    .step-line {
+      position: absolute;
+      left: 17px;
+      top: 45px;
+      bottom: 0;
+      width: 2px;
+      background-color: #e0e0e0;
+      z-index: 0;
+        }
+
+    .step:last-child {
+      margin-bottom: 0;
+    }
+
+    .step:last-child .step-line {
+      display: none;
+    }
+
+    @media (max-width: 768px) {
+      .hero {
+        padding: 80px 0 100px;
+      }
+
+      .hero h1 {
+        font-size: 2.5rem;
+      }
+
+      .section {
+        padding: 60px 0;
+      }
+
+      .section-title {
+        font-size: 2rem;
+      }
+
+      .stat-value {
+        font-size: 2.5rem;
+      }
     }
   </style>
 </head>
 <body>
-  <!-- Container para notificações -->
-  <div id="notification-container" class="notification-container"></div>
+  <!-- Navbar -->
+  <nav class="navbar navbar-expand-lg">
+    <div class="container">
+      <a class="navbar-brand" href="#"><i class="bi bi-robot me-2"></i>WhatsGPT</a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav ms-auto">
+          <li class="nav-item">
+            <a class="nav-link active" href="#">Início</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="#features">Recursos</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="#how-it-works">Como Funciona</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="#testimonials">Depoimentos</a>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </nav>
 
-  <!-- Seção de cabeçalho/hero -->
-  <section class="hero-section">
-    <div class="container text-center">
-      <h1><i class="bi bi-robot"></i> <span class="logo-text">Whats<span class="logo-highlight">GPT</span></span></h1>
-      <p class="lead mb-4">Automatize seu atendimento no WhatsApp com Inteligência Artificial</p>
-      <div class="d-flex justify-content-center">
-        <a href="/qrcode" class="btn btn-light btn-lg mx-2">
-          <i class="bi bi-qr-code-scan"></i> Conectar com WhatsApp
-        </a>
-        <a href="#how-it-works" class="btn btn-outline-light btn-lg mx-2">
-          <i class="bi bi-info-circle"></i> Como funciona
-        </a>
+  <!-- Hero Section -->
+  <section class="hero">
+        <div class="container">
+      <div class="row justify-content-center">
+        <div class="col-lg-8 text-center">
+          <h1>Acesse a IA através do seu WhatsApp</h1>
+          <p>Configure seu assistente inteligente e use o poder do ChatGPT diretamente no WhatsApp, sem necessidade de instalar aplicativos</p>
+          <a href="/qrcode" class="hero-btn">
+            <i class="bi bi-whatsapp me-2"></i>Conectar com WhatsApp
+          </a>
+          <a href="#how-it-works" class="hero-btn hero-btn-outline">
+            <i class="bi bi-info-circle me-2"></i>Saiba Mais
+          </a>
+        </div>
       </div>
     </div>
   </section>
 
+  <!-- Features Section -->
+  <section class="section" id="features">
   <div class="container">
-    <!-- Seção de conexão direta -->
-    <section class="mb-5">
-      <div class="qr-connect-card">
-        <i class="bi bi-whatsapp connect-icon"></i>
-        <h2 class="mb-3">Acesse Diretamente pelo WhatsApp</h2>
-        <p class="mb-4">Sem necessidade de criar conta! Basta escanear o QR code com seu WhatsApp e começar a usar seu assistente personalizado.</p>
-        <a href="/qrcode" class="btn btn-success btn-lg">
-          <i class="bi bi-qr-code-scan"></i> Escanear QR Code
-        </a>
+      <div class="text-center mb-5">
+        <h2 class="section-title">Muito mais que ChatGPT</h2>
+        <p class="section-subtitle">Alimente seu bot com dados personalizados e utilize recursos avançados de IA</p>
       </div>
-    </section>
 
-    <!-- Como funciona -->
-    <section id="how-it-works" class="mb-5">
-      <h2 class="text-center mb-5">Como funciona</h2>
-      <div class="steps-container">
-        <div class="step-card">
-          <h3><span class="step-number">1</span> Escaneie o QR Code</h3>
-          <p>Conecte seu WhatsApp escaneando o QR code. Seu número se tornará automaticamente seu identificador único no sistema.</p>
+      <div class="row">
+        <div class="col-md-4">
+          <div class="feature-card">
+            <div class="feature-icon">
+              <i class="bi bi-robot"></i>
+            </div>
+            <h3 class="feature-title">Inteligência Artificial</h3>
+            <p>Respostas geradas por modelos avançados de IA adaptadas às suas necessidades específicas.</p>
+          </div>
         </div>
-        
-        <div class="step-card">
-          <h3><span class="step-number">2</span> Configure seu assistente</h3>
-          <p>Personalize as respostas e adicione fontes de conhecimento que seu bot utilizará para responder às perguntas.</p>
-        </div>
-        
-        <div class="step-card">
-          <h3><span class="step-number">3</span> Comece a utilizar</h3>
-          <p>Seu assistente estará pronto para responder às mensagens com base nas configurações que você definiu.</p>
-        </div>
-      </div>
-    </section>
 
-    <!-- Seção de recursos -->
-    <section id="features" class="mb-5">
-      <h2 class="text-center mb-5">Recursos</h2>
-      <div class="row g-4">
         <div class="col-md-4">
-          <div class="card h-100">
-            <div class="card-body text-center">
-              <i class="bi bi-robot feature-icon"></i>
-              <h3>Assistente Inteligente</h3>
-              <p>Respostas personalizadas baseadas em IA avançada para atender melhor seus contatos.</p>
+          <div class="feature-card">
+            <div class="feature-icon">
+              <i class="bi bi-file-earmark-text"></i>
             </div>
+            <h3 class="feature-title">Integração de Dados</h3>
+            <p>Alimente seu bot com URLs, PDFs, planilhas Excel, CSV e documentos para respostas mais precisas.</p>
           </div>
         </div>
+
         <div class="col-md-4">
-          <div class="card h-100">
-            <div class="card-body text-center">
-              <i class="bi bi-database feature-icon"></i>
-              <h3>Personalização Completa</h3>
-              <p>Adicione documentos, planilhas, URLs e textos para seu bot utilizar como base de conhecimento.</p>
+          <div class="feature-card">
+            <div class="feature-icon">
+              <i class="bi bi-gear"></i>
             </div>
-          </div>
-        </div>
-        <div class="col-md-4">
-          <div class="card h-100">
-            <div class="card-body text-center">
-              <i class="bi bi-phone feature-icon"></i>
-              <h3>Integração com WhatsApp</h3>
-              <p>Funciona diretamente com seu número do WhatsApp, sem necessidade de apps adicionais.</p>
-            </div>
+            <h3 class="feature-title">Configuração Flexível</h3>
+            <p>Crie múltiplos perfis de bots com diferentes instruções para atender diversas necessidades.</p>
           </div>
         </div>
       </div>
-    </section>
+    </div>
+  </section>
+
+  <!-- How It Works Section -->
+  <section class="section bg-light" id="how-it-works">
+    <div class="container">
+      <div class="row align-items-center">
+        <div class="col-lg-6">
+          <h2 class="section-title">Como Funciona</h2>
+          <p class="mb-5">Conecte-se em apenas quatro passos simples e comece a utilizar a IA no WhatsApp:</p>
+
+          <div class="steps-card">
+                        <div class="step">
+                            <div class="step-number">1</div>
+              <div class="step-content">
+                <h4 class="step-title">Inicie a conexão</h4>
+                <p class="step-description">Clique no botão para iniciar a conexão com o WhatsApp</p>
+              </div>
+              <div class="step-line"></div>
+      </div>
+
+                        <div class="step">
+                            <div class="step-number">2</div>
+              <div class="step-content">
+                <h4 class="step-title">Escaneie o QR Code</h4>
+                <p class="step-description">Abra o WhatsApp no seu celular e escaneie o QR code que aparecerá na tela</p>
+              </div>
+              <div class="step-line"></div>
+        </div>
+
+                        <div class="step">
+                            <div class="step-number">3</div>
+              <div class="step-content">
+                <h4 class="step-title">Configure seu Bot</h4>
+                <p class="step-description">Personalize as instruções e dados que seu assistente utilizará</p>
+              </div>
+              <div class="step-line"></div>
+        </div>
+
+                        <div class="step">
+                            <div class="step-number">4</div>
+              <div class="step-content">
+                <h4 class="step-title">Comece a Conversar</h4>
+                <p class="step-description">Envie mensagens para o número conectado e receba respostas da IA</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-lg-6 text-center">
+          <img src="https://placehold.co/600x400/075e54/FFFFFF?text=WhatsGPT" alt="WhatsGPT Demo" class="img-fluid rounded shadow-lg mt-4 mt-lg-0">
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Stats Section -->
+  <section class="stats-section">
+    <div class="container">
+      <div class="row text-center">
+        <div class="col-md-4 mb-4 mb-md-0">
+          <div class="stat-value">30+</div>
+          <div class="stat-label">Países Atendidos</div>
+        </div>
+        <div class="col-md-4 mb-4 mb-md-0">
+          <div class="stat-value">15K+</div>
+          <div class="stat-label">Usuários Ativos</div>
+        </div>
+        <div class="col-md-4">
+          <div class="stat-value">1M+</div>
+          <div class="stat-label">Mensagens Processadas</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Testimonials Section -->
+  <section class="section" id="testimonials">
+    <div class="container">
+      <div class="text-center mb-5">
+        <h2 class="section-title">O que nossos usuários dizem</h2>
+        <p class="section-subtitle">Pessoas que já transformaram sua experiência com WhatsApp usando nossa solução</p>
+                </div>
+
+      <div class="row">
+        <div class="col-lg-4">
+          <div class="testimonial-card">
+            <p class="testimonial-text">"O WhatsGPT transformou a maneira como trabalho. O recurso de transcrição de notas de voz é incrivelmente útil para organizar meus pensamentos e ideias."</p>
+            <div class="testimonial-author">Carlos M.</div>
+            <div class="testimonial-role">Desenvolvedor de Software</div>
+          </div>
+        </div>
+
+        <div class="col-lg-4">
+          <div class="testimonial-card">
+            <p class="testimonial-text">"A integração perfeita do ChatGPT com o WhatsApp tornou ainda mais conveniente acessar as poderosas ferramentas de IA que uso diariamente."</p>
+            <div class="testimonial-author">Ana F.</div>
+            <div class="testimonial-role">Marketing Digital</div>
+          </div>
+            </div>
+
+        <div class="col-lg-4">
+          <div class="testimonial-card">
+            <p class="testimonial-text">"Adoro as imagens geradas por IA! É incrível como posso simplesmente descrever uma cena e o ChatGPT cria uma imagem única com base na minha descrição."</p>
+            <div class="testimonial-author">Marcos L.</div>
+            <div class="testimonial-role">Designer Gráfico</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA Section -->
+  <section class="cta-section">
+    <div class="container">
+      <div class="row justify-content-center">
+        <div class="col-lg-8 text-center">
+          <h2 class="section-title">Descubra a IA diretamente do seu WhatsApp</h2>
+          <p class="mb-5">Comece a usar agora mesmo e transforme sua experiência de comunicação</p>
+          <a href="/qrcode" class="hero-btn" style="background-color: var(--primary-color); color: white;">
+            <i class="bi bi-whatsapp me-2"></i>Conectar com WhatsApp
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+        <div class="container">
+      <div class="row">
+        <div class="col-lg-4 mb-4 mb-lg-0">
+          <h5 class="footer-title"><i class="bi bi-robot me-2"></i>WhatsGPT</h5>
+          <p>Assistente inteligente para WhatsApp alimentado por IA. Configure, personalize e use a inteligência artificial diretamente no seu aplicativo de mensagens favorito.</p>
+          <div class="social-links">
+            <a href="#"><i class="bi bi-facebook"></i></a>
+            <a href="#"><i class="bi bi-twitter"></i></a>
+            <a href="#"><i class="bi bi-instagram"></i></a>
+            <a href="#"><i class="bi bi-linkedin"></i></a>
+          </div>
+        </div>
+
+        <div class="col-lg-2 col-md-4 col-6 mb-4 mb-md-0">
+          <h5 class="footer-title">Links</h5>
+          <ul class="footer-links">
+            <li><a href="#">Início</a></li>
+            <li><a href="#features">Recursos</a></li>
+            <li><a href="#how-it-works">Como Funciona</a></li>
+            <li><a href="#testimonials">Depoimentos</a></li>
+          </ul>
+        </div>
+
+        <div class="col-lg-3 col-md-4 col-6 mb-4 mb-md-0">
+          <h5 class="footer-title">Recursos</h5>
+          <ul class="footer-links">
+            <li><a href="#">Integração de dados</a></li>
+          </ul>
+        </div>
+
+        <div class="col-lg-3 col-md-4">
+          <h5 class="footer-title">Contato</h5>
+          <ul class="footer-links">
+            <li><i class="bi bi-envelope me-2"></i> nzantunes1@gmail.com</li>
+            <li><i class="bi bi-telephone me-2"></i> (47) 99109-7740</li>
+            <li><i class="bi bi-geo-alt me-2"></i> Santa Catarina, Brasil</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="copyright">
+            <p>© 2025 WhatsGPT. Todos os direitos reservados a Nain Zahailo.</p>
+            <p>nzantunes1@gmail.com | (47) 99109-7740</p>
   </div>
-
-  <!-- Rodapé -->
-  <footer class="bg-dark text-white py-4 mt-5">
-    <div class="container text-center">
-      <p>© 2025 WhatsGPT. Todos os direitos reservados a Nain Zahailo.</p>
-      <p class="mb-0">
-        <i class="bi bi-envelope me-1"></i> nzantunes1@gmail.com 
-        <span class="mx-2">|</span> 
-        <a href="https://wa.me/5547991097740" target="_blank" class="text-white text-decoration-none">
-          <i class="bi bi-whatsapp me-1"></i> (47) 99109-7740
-        </a>
-      </p>
     </div>
   </footer>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Verificar se há um redirecionamento pendente nos parâmetros da URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const phoneNumber = urlParams.get('phone');
+            
+            if (phoneNumber) {
+        window.location.href = `/config?phone=${phoneNumber}`;
+            }
+        
+      // Smooth scrolling para âncoras
+      document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener('click', function (e) {
+          e.preventDefault();
+            
+          document.querySelector(this.getAttribute('href')).scrollIntoView({
+            behavior: 'smooth'
+          });
+        });
+      });
+        });
+    </script>
 </body>
 </html> 
