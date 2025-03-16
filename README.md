@@ -1,112 +1,69 @@
-# ChatBot WhatsApp com Extração de Conteúdo do Site
+# WhatsGPT
 
-Um chatbot para WhatsApp que extrai informações do seu site e usa o GPT para responder perguntas com base nessas informações. Inclui uma interface web para configuração.
+WhatsGPT é uma aplicação que integra o WhatsApp com a API do OpenAI (ChatGPT), permitindo que os usuários criem chatbots personalizados que respondem às mensagens do WhatsApp utilizando inteligência artificial.
 
 ## Funcionalidades
 
-- Interface web para configurar o prompt e o link do site
-- Extração automática de conteúdo do site para fornecer ao GPT
-- Conexão com WhatsApp via QR Code
-- Integração com OpenAI GPT para gerar respostas baseadas no conteúdo do site
-- Resposta automática a mensagens do WhatsApp
+- **Integração WhatsApp**: Conecte-se ao WhatsApp via QR Code
+- **Personalização**: Configure prompts personalizados para cada bot
+- **Contexto Adicional**: Adicione URLs para que o bot tenha informações contextuais para responder às perguntas
+- **Integração de Dados**: Carregue arquivos PDF, Excel e CSV para enriquecer as respostas
+- **Múltiplas Configurações**: Crie e gerencie diferentes perfis de bots para diversos casos de uso
 
 ## Requisitos
 
 - Node.js (v14 ou superior)
-- Navegador Google Chrome instalado
-- Conexão com a internet
+- NPM ou Yarn
+- SQLite (incluso nas dependências)
+- Chave de API da OpenAI
+- Google Chrome ou Chromium (para o WhatsApp Web)
 
 ## Instalação
 
-1. Clone este repositório ou baixe os arquivos
+1. Clone o repositório:
+```bash
+git clone https://github.com/SEU_USUARIO/whatsgpt.git
+cd whatsgpt
+```
 
 2. Instale as dependências:
-```
+```bash
 npm install
 ```
 
-3. Configure o arquivo `.env` com sua chave da API OpenAI:
+3. Crie um arquivo `.env` na raiz do projeto com o seguinte conteúdo:
 ```
-OPENAI_API_KEY=sua_chave_da_api_openai
+OPENAI_API_KEY=sua_chave_api_da_openai
+PORT=3000
 ```
 
 4. Inicie o servidor:
-```
-npm start
-```
-
-5. Acesse a interface web:
-```
-http://localhost:3000
+```bash
+node index.js
 ```
 
-## Como usar
+## Uso
 
-### Configuração do ChatBot
+1. Acesse `http://localhost:3000` em seu navegador
+2. Escaneie o QR Code exibido com seu WhatsApp
+3. Configure seu bot na página de configuração
+4. Comece a receber e responder mensagens automaticamente!
 
-1. Acesse a interface web em `http://localhost:3000`
+## Configurando seu Bot
 
-2. No campo **Prompt (Descrição do seu site)**, descreva o que seu site faz e como o bot deve se comportar. Por exemplo:
-   ```
-   Você é um assistente da loja XYZ que vende produtos eletrônicos. Responda dúvidas sobre nossos produtos, preços e políticas de entrega.
-   ```
+1. Após conectar seu WhatsApp, acesse a página de configuração
+2. Crie uma nova configuração com um nome e um prompt personalizado
+3. Adicione URLs para contexto adicional (opcional)
+4. Carregue arquivos para enriquecer as respostas (opcional)
+5. Salve e ative sua configuração
+6. Teste enviando mensagens para o número conectado
 
-3. No campo **Link do Site**, adicione o URL completo do seu site (incluindo https://). Por exemplo:
-   ```
-   https://www.minhaloja.com.br
-   ```
+## Suporte
 
-4. Clique no botão **Extrair Conteúdo** para extrair as informações do site. O sistema irá:
-   - Acessar o site informado
-   - Extrair textos, títulos, descrições e outros conteúdos relevantes
-   - Mostrar uma prévia do conteúdo extraído
-   - Armazenar essas informações para uso pelo GPT
+Para suporte, entre em contato com:
+- Email: nzantunes1@gmail.com
+- WhatsApp: (47) 99109-7740
 
-5. Clique em **Salvar Configuração** para salvar as configurações e o conteúdo extraído
+## Licença
 
-### Conexão com WhatsApp
-
-1. Na seção **Conexão com WhatsApp**, um QR Code será exibido
-
-2. Abra o WhatsApp no seu celular
-
-3. Toque em Menu (três pontos) > WhatsApp Web
-
-4. Escaneie o QR Code exibido na tela
-
-5. Após a conexão, o status mudará para "Conectado"
-
-### Uso do ChatBot
-
-- Qualquer mensagem enviada para o número do WhatsApp conectado será respondida automaticamente pelo bot
-- O bot usará o prompt, o link do site e o conteúdo extraído para gerar respostas relevantes
-- Você pode atualizar a configuração ou extrair novamente o conteúdo do site a qualquer momento através da interface web
-
-## Como funciona a extração de conteúdo
-
-O sistema utiliza web scraping para extrair informações do seu site:
-
-1. Acessa a URL fornecida
-2. Extrai o título da página, meta descrições, cabeçalhos (H1, H2, H3)
-3. Captura parágrafos, listas e conteúdo de tabelas
-4. Remove elementos não relevantes como scripts e estilos
-5. Formata o conteúdo para ser utilizado pelo GPT
-6. Limita o tamanho do conteúdo para evitar exceder os limites de tokens do GPT
-
-## Solução de problemas
-
-- Se o QR Code não aparecer, tente reiniciar o servidor
-- Se o WhatsApp desconectar, um novo QR Code será gerado automaticamente
-- Se a extração de conteúdo falhar, verifique se a URL está correta e se o site permite acesso via web scraping
-- Certifique-se de que sua chave da API OpenAI é válida
-
-## Tecnologias utilizadas
-
-- Node.js
-- Express
-- Socket.io
-- WhatsApp Web.js
-- OpenAI API
-- Cheerio (para web scraping)
-- Axios
-- Bootstrap 
+© 2025 WhatsGPT. Todos os direitos reservados a Nain Zahailo. 
