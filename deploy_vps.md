@@ -173,7 +173,7 @@ cd /var/www/whatsgpt
 git stash
 
 # Atualize o código do GitHub
-git pull origin main
+git pull origin master
 
 # Atualize as dependências (se necessário)
 npm install

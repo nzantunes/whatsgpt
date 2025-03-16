@@ -13,7 +13,7 @@ git stash
 git pull origin master
 
 # Atualize as dependências (se necessário)
-# npm install
+npm install
 
 # Reinicie o aplicativo
 pm2 restart all
