@@ -613,7 +613,22 @@
             const phoneNumber = urlParams.get('phone');
             
             if (phoneNumber) {
-        window.location.href = `/config?phone=${phoneNumber}`;
+                // Tentar verificar se há sessão antes de redirecionar
+                fetch('/api/check-auth')
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.authenticated) {
+                            window.location.href = `/config?phone=${phoneNumber}`;
+                        } else {
+                            // Se não estiver autenticado, autenticar primeiro
+                            window.location.href = `/login?redirect=config&phone=${phoneNumber}`;
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Erro ao verificar autenticação:', error);
+                        // Em caso de erro, tentar redirecionar normalmente
+                        window.location.href = `/config?phone=${phoneNumber}`;
+                    });
             }
         
       // Smooth scrolling para âncoras

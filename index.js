@@ -313,10 +313,16 @@ const client = new Client({
       '--no-first-run',
       '--no-zygote',
       '--single-process',
-      '--disable-gpu'
+      '--disable-gpu',
+      '--disable-web-security',
+      '--disable-features=IsolateOrigins,site-per-process',
+      '--ignore-certificate-errors',
+      '--ignore-certificate-errors-spki-list',
+      '--allow-insecure-localhost'
     ],
     headless: true,
-    timeout: 60000
+    timeout: 120000,
+    executablePath: process.env.PUPPETEER_EXECUTABLE_PATH
   },
   authStrategy: new LocalAuth({
     clientId: 'whatsgpt-client',
@@ -324,7 +330,7 @@ const client = new Client({
   }),
   restartOnAuthFail: true,
   qrMaxRetries: 5,
-  qrTimeoutMs: 60000
+  qrTimeoutMs: 120000
 });
 
 // Função para enviar mensagem para o WhatsApp
