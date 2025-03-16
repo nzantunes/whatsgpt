@@ -153,8 +153,25 @@ app.use(session({
 // Middleware de verificação de autenticação
 async function isAuthenticated(req, res, next) {
   try {
+    // Verificar parâmetro de telefone na URL
+    const phoneParam = req.query.phone;
+    
     // Se houver um usuário na sessão, continuar
     if (req.session.user) {
+      // Se o usuário for administrador, permitir acesso a qualquer número
+      if (req.session.user.is_admin) {
+        return next();
+      }
+      
+      // Se houver um parâmetro de telefone na URL
+      if (phoneParam) {
+        // Verificar se este telefone está autorizado para o usuário atual
+        if (phoneParam !== global.currentWhatsAppPhoneNumber) {
+          console.log(`Tentativa de acesso não autorizado ao telefone ${phoneParam}`);
+          return res.status(403).redirect('/unauthorized');
+        }
+      }
+      
       return next();
     }
     
@@ -162,6 +179,12 @@ async function isAuthenticated(req, res, next) {
     if (client.info) {
       // O cliente está conectado, vamos permitir o acesso
       console.log('Cliente WhatsApp conectado, permitindo acesso sem login tradicional');
+      
+      // Se houver um parâmetro de telefone na URL, verificar se é o mesmo conectado
+      if (phoneParam && phoneParam !== global.currentWhatsAppPhoneNumber) {
+        console.log(`Tentativa de acesso não autorizado ao telefone ${phoneParam}`);
+        return res.status(403).redirect('/unauthorized');
+      }
       
       // Verificar se temos o ID do usuário do WhatsApp na variável global
       if (global.currentWhatsAppUserId) {
@@ -1282,6 +1305,23 @@ app.get('/logout', (req, res) => {
   res.redirect('/');
 });
 
+// Rota para página de acesso não autorizado
+app.get('/unauthorized', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'unauthorized.html'));
+});
+
+// Rota para página de login
+app.get('/login', (req, res) => {
+  // Se já estiver autenticado, redirecionar para página de configuração
+  if (req.session && req.session.user) {
+    const redirectTo = req.query.redirect || 'config';
+    const phoneParam = req.query.phone ? `?phone=${req.query.phone}` : '';
+    return res.redirect(`/${redirectTo}${phoneParam}`);
+  }
+  
+  res.sendFile(path.join(__dirname, 'public', 'login.html'));
+});
+
 // Configuração do Multer para upload de arquivos
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
@@ -1952,6 +1992,18 @@ async function loadActiveConfiguration(userId) {
     return null;
   }
 }
+
+// Rota para verificar autenticação
+app.get('/api/check-auth', (req, res) => {
+  const isAuth = req.session && req.session.user;
+  res.json({
+    authenticated: !!isAuth,
+    user: isAuth ? {
+      id: req.session.user.id,
+      auth_type: req.session.user.auth_type || 'whatsapp'
+    } : null
+  });
+});
 
 // Inicialização do servidor
 const PORT = process.env.PORT || 3001;
