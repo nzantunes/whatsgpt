@@ -1602,6 +1602,7 @@ function initializeClient() {
       // Quando QR code é recebido
       console.log('QR Code recebido, gerando imagem...');
       global.qrCode = qr;
+      global.isAuthenticated = false;
       
       // Limpar qualquer QR code anterior
       if (global.qrCodeInterval) {
@@ -1620,17 +1621,17 @@ function initializeClient() {
         io.emit('qrcode', dataUrl);
         console.log('QR code enviado para cliente');
         
-        // Configurar um intervalo para reenviar o QR code a cada 30 segundos
-        // Isso ajuda a manter o QR code visível mesmo se o cliente reconectar
+        // Configurar um intervalo para reenviar o QR code a cada 60 segundos
+        // e apenas se não estiver autenticado
         global.qrCodeInterval = setInterval(() => {
-          if (global.qrCode) {
+          if (global.qrCode && !global.isAuthenticated) {
             io.emit('qrcode', dataUrl);
-            console.log('QR code reenviado para cliente');
+            console.log('QR code reenviado para cliente (aguardando autenticação)');
           } else {
             clearInterval(global.qrCodeInterval);
             global.qrCodeInterval = null;
           }
-        }, 30000);
+        }, 60000); // Aumentado para 60 segundos
       });
     });
     
@@ -1739,7 +1740,7 @@ function initializeClient() {
     
     client.on('authenticated', () => {
       console.log('✅ Autenticado no WhatsApp!');
-      io.emit('whatsapp-status', { status: 'authenticated', message: 'Autenticado com sucesso!' });
+      global.isAuthenticated = true;
       
       // Limpar o QR code e o intervalo quando autenticado
       global.qrCode = null;
@@ -1747,6 +1748,8 @@ function initializeClient() {
         clearInterval(global.qrCodeInterval);
         global.qrCodeInterval = null;
       }
+      
+      io.emit('whatsapp-status', { status: 'authenticated', message: 'Autenticado com sucesso!' });
       
       // Resetar contador de tentativas de reconexão
       global.reconnectAttempts = 0;
@@ -1903,7 +1906,6 @@ function initializeClient() {
         console.log('Tentando inicializar novamente após erro...');
         initializeClient();
       }, 10000);
-    });
     console.log('Cliente WhatsApp inicialização em andamento');
   } catch (error) {
     console.error('Erro ao inicializar cliente WhatsApp:', error);
