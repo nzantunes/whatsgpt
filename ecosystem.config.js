@@ -1,7 +1,8 @@
 module.exports = {
   apps: [{
     name: 'whatsgpt',
-    script: 'index.js',
+    script: '/var/www/whatsgpt/index.js',
+    cwd: '/var/www/whatsgpt',
     watch: true,
     autorestart: true,
     max_restarts: 10,
@@ -14,8 +15,8 @@ module.exports = {
     instances: 1,
     exec_mode: 'fork',
     restart_delay: 4000,
-    error_file: 'logs/err.log',
-    out_file: 'logs/out.log',
+    error_file: '/var/www/whatsgpt/logs/err.log',
+    out_file: '/var/www/whatsgpt/logs/out.log',
     merge_logs: true,
     time: true
   }]

@@ -4,7 +4,7 @@ echo "=== Iniciando atualização persistente do WhatsGPT ==="
 echo "Data: $(date)"
 
 # Navegar para o diretório do projeto
-cd /root/whatsgpt
+cd /var/www/whatsgpt
 
 # Puxar as últimas alterações do GitHub
 echo "Atualizando código do GitHub..."
