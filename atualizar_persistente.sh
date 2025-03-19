@@ -3,35 +3,8 @@
 echo "=== Iniciando atualização persistente do WhatsGPT ==="
 echo "Data: $(date)"
 
-# Navegar para o diretório do projeto
+# Navegar para o diretório do aplicativo
 cd /var/www/whatsgpt
-
-# Puxar as últimas alterações do GitHub
-echo "Atualizando código do GitHub..."
-git pull origin master
-
-# Criar diretório de logs se não existir
-mkdir -p logs
-
-# Instalar dependências se necessário
-echo "Verificando dependências..."
-npm install
-
-# Salvar o startup atual do PM2
-echo "Salvando configuração do PM2..."
-pm2 save
-
-# Reiniciar a aplicação usando o arquivo ecosystem
-echo "Reiniciando aplicação..."
-pm2 restart ecosystem.config.js --update-env
-
-# Mostrar status
-echo "Status atual do PM2:"
-pm2 list
-
-# Mostrar os últimos logs
-echo "Últimos logs da aplicação:"
-pm2 logs whatsgpt --lines 20
 
 # Criar backup do banco de dados
 echo "Criando backup do banco de dados..."
@@ -70,9 +43,21 @@ chmod +x *.sh
 chmod 755 -R public/
 chmod 644 .env
 
+# Instalar dependências
+echo "Atualizando dependências..."
+npm install
+
 # Limpar cache do node
 echo "Limpando cache do Node.js..."
 npm cache clean --force
+
+# Reiniciar a aplicação
+echo "Reiniciando aplicação..."
+pm2 restart whatsgpt || pm2 start index.js --name whatsgpt
+
+# Salvar configuração do PM2 para persistir após reboot
+echo "Salvando configuração PM2..."
+pm2 save
 
 # Forçar atualização de timestamps dos arquivos estáticos para cache-busting
 echo "Atualizando timestamps dos arquivos estáticos..."

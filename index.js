@@ -12,6 +12,7 @@ const fs = require('fs');
 const multer = require('multer');
 const { Op } = require('sequelize');
 const bodyParser = require('body-parser');
+const { rimraf } = require('rimraf');
 require('dotenv').config();
 
 // Importar módulo de ajuda da OpenAI
@@ -103,7 +104,8 @@ const BotConfig = sequelize.define('BotConfig', {
 // Forçar a sincronização do modelo com o banco de dados
 (async () => {
   try {
-    await sequelize.sync({ alter: true });
+    // Alterar para não forçar alterações na estrutura
+    await sequelize.sync();
     console.log('Modelos sincronizados com o banco de dados');
   } catch (error) {
     console.error('Erro ao sincronizar modelos:', error);
@@ -1228,13 +1230,46 @@ app.get('/get-qrcode', (req, res) => {
   }
 });
 
+// Função para limpar a pasta de autenticação do WhatsApp
+async function clearWhatsAppAuth() {
+  const authPath = path.join(__dirname, '.wwebjs_auth');
+  const cachePath = path.join(__dirname, '.wwebjs_cache');
+  
+  console.log('Limpando arquivos de autenticação do WhatsApp...');
+  
+  try {
+    // Remover pasta .wwebjs_auth
+    if (fs.existsSync(authPath)) {
+      await rimraf(authPath);
+      console.log('Pasta .wwebjs_auth removida com sucesso');
+    }
+    
+    // Remover pasta .wwebjs_cache
+    if (fs.existsSync(cachePath)) {
+      await rimraf(cachePath);
+      console.log('Pasta .wwebjs_cache removida com sucesso');
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Erro ao limpar arquivos de autenticação:', error);
+    return false;
+  }
+}
+
 // Rota para iniciar a geração do QR code
-app.get('/api/qrcode/generate', (req, res) => {
+app.get('/api/qrcode/generate', async (req, res) => {
   try {
     console.log('Solicitação para gerar QR code recebida');
     
     // Verificar parâmetro de forçar desconexão
     const forceNew = req.query.force === 'true';
+    
+    // Se estamos forçando um novo QR code, limpar a sessão anterior
+    if (forceNew) {
+      await clearWhatsAppAuth();
+      global.qrCodeAttempts = 0;
+    }
     
     // Verificar se o cliente já está conectado
     if (client && client.info && !forceNew) {
@@ -1246,21 +1281,6 @@ app.get('/api/qrcode/generate', (req, res) => {
         status: 'connected',
         sessionId: client.info.wid.user,
         phoneNumber: client.info.wid.user
-      });
-    }
-    
-    // Se estamos forçando um novo QR code e já estamos conectados
-    if (forceNew && client && client.info) {
-      console.log('Forçando geração de novo QR code...');
-      global.forceNewQrCode = true;
-      
-      // Iniciar processo de desconexão e nova inicialização
-      initializeClient();
-      
-      return res.json({
-        success: true,
-        status: 'regenerating',
-        message: 'Gerando novo QR code, aguarde...'
       });
     }
     
@@ -1549,7 +1569,7 @@ app.use((err, req, res, next) => {
 });
 
 // Função para inicializar o cliente WhatsApp
-function initializeClient() {
+async function initializeClient() {
   console.log('Inicializando cliente WhatsApp...');
   
   try {
@@ -1559,8 +1579,14 @@ function initializeClient() {
       return;
     }
     
+    // Limpar arquivos de autenticação antes de inicializar
+    await clearWhatsAppAuth();
+    
     // Definir flag para evitar inicializações duplicadas
     global.isWhatsAppInitializing = true;
+    
+    // Resetar contador de QR code
+    global.qrCodeAttempts = 0;
     
     // Limpar tentativas anteriores de reconexão
     if (global.reconnectTimeout) {
@@ -1602,7 +1628,6 @@ function initializeClient() {
       // Quando QR code é recebido
       console.log('QR Code recebido, gerando imagem...');
       global.qrCode = qr;
-      global.isAuthenticated = false;
       
       // Limpar qualquer QR code anterior
       if (global.qrCodeInterval) {
@@ -1621,17 +1646,17 @@ function initializeClient() {
         io.emit('qrcode', dataUrl);
         console.log('QR code enviado para cliente');
         
-        // Configurar um intervalo para reenviar o QR code a cada 60 segundos
-        // e apenas se não estiver autenticado
+        // Configurar um intervalo para reenviar o QR code a cada 30 segundos
+        // Isso ajuda a manter o QR code visível mesmo se o cliente reconectar
         global.qrCodeInterval = setInterval(() => {
-          if (global.qrCode && !global.isAuthenticated) {
+          if (global.qrCode) {
             io.emit('qrcode', dataUrl);
-            console.log('QR code reenviado para cliente (aguardando autenticação)');
+            console.log('QR code reenviado para cliente');
           } else {
             clearInterval(global.qrCodeInterval);
             global.qrCodeInterval = null;
           }
-        }, 60000); // Aumentado para 60 segundos
+        }, 30000);
       });
     });
     
@@ -1740,7 +1765,7 @@ function initializeClient() {
     
     client.on('authenticated', () => {
       console.log('✅ Autenticado no WhatsApp!');
-      global.isAuthenticated = true;
+      io.emit('whatsapp-status', { status: 'authenticated', message: 'Autenticado com sucesso!' });
       
       // Limpar o QR code e o intervalo quando autenticado
       global.qrCode = null;
@@ -1748,8 +1773,6 @@ function initializeClient() {
         clearInterval(global.qrCodeInterval);
         global.qrCodeInterval = null;
       }
-      
-      io.emit('whatsapp-status', { status: 'authenticated', message: 'Autenticado com sucesso!' });
       
       // Resetar contador de tentativas de reconexão
       global.reconnectAttempts = 0;
@@ -1823,7 +1846,10 @@ function initializeClient() {
         console.log(`Mensagem de: ${senderNumber}`);
         
         // Carregar configuração ativa do usuário
-        const userConfig = await loadUserActiveConfig(global.currentWhatsAppPhoneNumber);
+        const db = await getUserDatabase(global.currentWhatsAppPhoneNumber);
+        const userConfig = await db.models.UserBotConfig.findOne({
+          where: { is_active: true }
+        });
         
         if (!userConfig) {
           console.error('Nenhuma configuração ativa encontrada para responder mensagem');
@@ -1831,8 +1857,11 @@ function initializeClient() {
           return;
         }
         
-        console.log(`Usando configuração: ${userConfig.name} (ID: ${userConfig.id})`);
-        console.log(`Modelo: ${userConfig.model}, Prompt: ${userConfig.prompt.substring(0, 50)}...`);
+        console.log('=== Configuração Carregada ===');
+        console.log(`Nome: ${userConfig.name}`);
+        console.log(`ID: ${userConfig.id}`);
+        console.log(`Modelo: ${userConfig.model}`);
+        console.log(`Prompt completo: ${userConfig.prompt}`);
         
         // Enviar "digitando" status
         const chat = await message.getChat();
@@ -1858,22 +1887,33 @@ function initializeClient() {
               
               if (urlContent) {
                 console.log(`Obtido conteúdo de URLs: ${urlContent.length} caracteres`);
-                
-                // Adicionar o conteúdo das URLs ao prompt do sistema
                 promptWithContext = `${userConfig.prompt}\n\nInformações de contexto das URLs fornecidas:\n${urlContent}`;
-                console.log('Prompt enriquecido com conteúdo de URLs');
-              } else {
-                console.log('Nenhum conteúdo extraído das URLs');
               }
             }
           } catch (urlError) {
             console.error('Erro ao processar URLs:', urlError);
+            // Continuar com o prompt original em caso de erro
+            promptWithContext = userConfig.prompt;
           }
         }
         
-        // Enviar mensagem para o GPT com o prompt enriquecido
-        console.log('Enviando mensagem para o GPT com contexto...');
-        const response = await sendMessageToGPT(
+        // Verificar se há conteúdo de arquivos para adicionar ao contexto
+        if (userConfig.pdf_content || userConfig.xlsx_content || userConfig.csv_content) {
+          let fileContent = '';
+          if (userConfig.pdf_content) fileContent += `\nConteúdo PDF:\n${userConfig.pdf_content}`;
+          if (userConfig.xlsx_content) fileContent += `\nConteúdo Excel:\n${userConfig.xlsx_content}`;
+          if (userConfig.csv_content) fileContent += `\nConteúdo CSV:\n${userConfig.csv_content}`;
+          
+          promptWithContext = `${promptWithContext}\n\nInformações de arquivos:\n${fileContent}`;
+        }
+        
+        console.log('=== Enviando para GPT ===');
+        console.log(`Prompt final: ${promptWithContext.substring(0, 100)}...`);
+        console.log(`Mensagem do usuário: ${message.body}`);
+        console.log(`Modelo usado: ${userConfig.model}`);
+        
+        // Enviar mensagem para o GPT
+        const response = await generateGPTResponse(
           promptWithContext,
           message.body,
           userConfig.model || 'gpt-3.5-turbo'
@@ -1882,9 +1922,12 @@ function initializeClient() {
         // Parar de "digitar"
         chat.clearState();
         
+        console.log(`Resposta do GPT: ${response.substring(0, 100)}...`);
+        
         // Responder mensagem
         await message.reply(response);
         console.log('Resposta enviada com sucesso');
+        
       } catch (error) {
         console.error('Erro ao processar mensagem do WhatsApp:', error);
         try {
@@ -1906,6 +1949,7 @@ function initializeClient() {
         console.log('Tentando inicializar novamente após erro...');
         initializeClient();
       }, 10000);
+    });
     console.log('Cliente WhatsApp inicialização em andamento');
   } catch (error) {
     console.error('Erro ao inicializar cliente WhatsApp:', error);
@@ -2020,4 +2064,4 @@ server.listen(PORT, () => {
   
   // Inicializa o cliente do WhatsApp
   initializeClient();
-}); 
+}); // Final do server.listen 

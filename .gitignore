@@ -53,4 +53,7 @@ desktop.ini
 # Outros arquivos sensíveis
 *.key
 *.pem
-*.cert 
+*.cert
+
+# Arquivos de banco de dados SQLite
+*.sqlite3 
