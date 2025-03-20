@@ -376,64 +376,22 @@ function createOpenAIClientLocal() {
 
 // Configuração do cliente WhatsApp
 const client = new Client({
-    authStrategy: new LocalAuth({
-        clientId: 'whatsgpt-client',
-        dataPath: './.wwebjs_auth'
-    }),
     puppeteer: {
-        headless: true,
+        executablePath: process.platform === 'linux' ? '/usr/bin/chromium' : undefined,
+        headless: 'new',
         args: [
             '--no-sandbox',
             '--disable-setuid-sandbox',
             '--disable-dev-shm-usage',
+            '--disable-accelerated-2d-canvas',
+            '--no-first-run',
+            '--no-zygote',
+            '--single-process',
             '--disable-gpu',
             '--disable-extensions',
-            '--disable-popup-blocking',
-            '--disable-translate',
-            '--disable-background-timer-throttling',
-            '--disable-backgrounding-occluded-windows',
-            '--disable-renderer-backgrounding',
-            '--disable-infobars',
-            '--disable-features=site-per-process',
-            '--disable-sync',
-            '--disable-notifications',
-            '--disable-background-networking',
-            '--disable-breakpad',
-            '--disable-client-side-phishing-detection',
-            '--disable-component-update',
-            '--disable-domain-reliability',
-            '--disable-hang-monitor',
-            '--disable-ipc-flooding-protection',
-            '--disable-prompt-on-repost',
-            '--metrics-recording-only',
-            '--no-default-browser-check',
-            '--safebrowsing-disable-auto-update',
-            '--password-store=basic',
-            '--use-mock-keychain',
-            '--window-size=1280,720',
-            '--window-position=0,0',
-            '--remote-debugging-port=0'
-        ],
-        executablePath: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
-        ignoreDefaultArgs: ['--enable-automation'],
-        protocolTimeout: 120000,
-        defaultViewport: {
-            width: 1280,
-            height: 720
-        },
-        browserWSEndpoint: null,
-        handleSIGINT: true,
-        handleSIGTERM: true,
-        handleSIGHUP: true,
-        timeout: 120000
-    },
-    restartOnAuthFail: true,
-    qrMaxRetries: 5,
-    takeoverOnConflict: true,
-    takeoverTimeoutMs: 0,
-    authTimeoutMs: 120000,
-    disableSpins: true,
-    markOnlineAvailable: false
+            '--disable-software-rasterizer'
+        ]
+    }
 });
 
 // Função para enviar mensagem para o WhatsApp
