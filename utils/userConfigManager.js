@@ -173,45 +173,41 @@ async function listUserConfigs(phoneNumber) {
  * @returns {Promise<Object>} - Promessa com a configuração ativa do usuário
  */
 async function loadUserActiveConfig(phoneNumber) {
-  console.log(`Carregando configuração ativa para: ${phoneNumber}`);
-  
   try {
+    console.log(`Carregando configuração ativa para o número: ${phoneNumber}`);
+    
+    if (!phoneNumber) {
+      console.error('Número de telefone não fornecido');
+      return null;
+    }
+
     // Obter banco de dados específico do usuário
     const db = await getUserDatabase(phoneNumber);
     
     // Buscar configuração ativa
-    let activeConfig = await db.models.UserBotConfig.findOne({
+    const activeConfig = await db.models.UserBotConfig.findOne({
       where: { is_active: true }
     });
-    
+
     if (activeConfig) {
-      console.log(`Configuração ativa encontrada para ${phoneNumber}: ${activeConfig.name}`);
+      console.log(`Configuração ativa encontrada: ${activeConfig.name}`);
       return activeConfig;
     }
-    
-    // Se não encontrou configuração ativa, buscar qualquer configuração existente
-    const anyConfig = await db.models.UserBotConfig.findOne();
-    
-    if (anyConfig) {
-      // Ativar a primeira configuração encontrada
-      await anyConfig.update({ is_active: true });
-      console.log(`Ativando configuração existente para ${phoneNumber}: ${anyConfig.name}`);
-      return anyConfig;
-    }
-    
-    // Se não encontrou nenhuma configuração, criar uma padrão
+
+    // Se não houver configuração ativa, criar uma padrão
+    console.log('Nenhuma configuração ativa encontrada, criando configuração padrão...');
     const defaultConfig = await db.models.UserBotConfig.create({
       name: 'Configuração Padrão',
-      prompt: 'Você é um assistente útil e amigável que ajuda a responder perguntas de forma clara e objetiva.',
+      prompt: 'Você é um assistente virtual que responde perguntas de forma educada e concisa.',
       model: 'gpt-3.5-turbo',
       is_active: true
     });
-    
-    console.log(`Criada configuração padrão para ${phoneNumber}`);
+
+    console.log(`Configuração padrão criada com ID: ${defaultConfig.id}`);
     return defaultConfig;
   } catch (error) {
-    console.error(`Erro ao carregar configuração ativa para ${phoneNumber}:`, error);
-    throw error;
+    console.error('Erro ao carregar configuração ativa:', error);
+    return null;
   }
 }
 

@@ -283,15 +283,9 @@
         if (qrExpireTimeout) clearTimeout(qrExpireTimeout);
         
         // Redirecionar para a página de configuração após autenticação
-        if (data.redirectTo) {
-          setTimeout(() => {
-            window.location.href = data.redirectTo;
-          }, 2000);
-        } else if (data.phoneNumber) {
-          setTimeout(() => {
-            window.location.href = `/config?phone=${data.phoneNumber}`;
-          }, 2000);
-        }
+        setTimeout(() => {
+          window.location.href = '/config';
+        }, 2000);
       }
       
       // Lidar com QR code expirado

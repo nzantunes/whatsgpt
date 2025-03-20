@@ -1,18 +1,20 @@
 const express = require('express');
 const { Client, LocalAuth } = require('whatsapp-web.js');
 const qrcode = require('qrcode');
-const { OpenAI } = require('openai');
-const socketIO = require('socket.io');
 const http = require('http');
+const socketIo = require('socket.io');
+const path = require('path');
+const fs = require('fs');
+const { exec } = require('child_process');
+const util = require('util');
+const execAsync = util.promisify(exec);
 const axios = require('axios');
 const cheerio = require('cheerio');
 const session = require('express-session');
-const path = require('path');
-const fs = require('fs');
 const multer = require('multer');
 const { Op } = require('sequelize');
 const bodyParser = require('body-parser');
-const { rimraf } = require('rimraf');
+const crypto = require('crypto');
 require('dotenv').config();
 
 // Importar módulo de ajuda da OpenAI
@@ -104,8 +106,7 @@ const BotConfig = sequelize.define('BotConfig', {
 // Forçar a sincronização do modelo com o banco de dados
 (async () => {
   try {
-    // Alterar para não forçar alterações na estrutura
-    await sequelize.sync();
+    await sequelize.sync({ alter: true });
     console.log('Modelos sincronizados com o banco de dados');
   } catch (error) {
     console.error('Erro ao sincronizar modelos:', error);
@@ -134,7 +135,7 @@ console.log('Resultado de createOpenAIClient:', openaiClient ? 'Cliente criado c
 // Configuração do servidor Express
 const app = express();
 const server = http.createServer(app);
-const io = socketIO(server);
+const io = socketIo(server);
 
 // Configurar middleware para processar JSON e dados de formulário
 app.use(express.json());
@@ -142,7 +143,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.static('public'));
 
 // Configurar sessões
-app.use(session({
+const sessionMiddleware = session({
   secret: process.env.SESSION_SECRET || 'whatsapp-bot-secret-key',
   resave: false,
   saveUninitialized: false,
@@ -150,110 +151,132 @@ app.use(session({
     secure: process.env.NODE_ENV === 'production',
     maxAge: 1000 * 60 * 60 * 24 // 24 horas
   }
-}));
+});
+
+app.use(sessionMiddleware);
+
+// Configurar Socket.IO para usar sessões
+io.use((socket, next) => {
+  sessionMiddleware(socket.request, socket.request.res || {}, next);
+});
+
+// Evento de conexão do Socket.IO
+io.on('connection', (socket) => {
+  console.log('Nova conexão Socket.IO estabelecida');
+  
+  // Salvar a sessão do socket globalmente
+  if (socket.request.session) {
+    global.currentSession = socket.request.session;
+    console.log('Sessão do socket salva globalmente');
+  }
+  
+  socket.on('disconnect', () => {
+    console.log('Conexão Socket.IO encerrada');
+  });
+});
 
 // Middleware de verificação de autenticação
 async function isAuthenticated(req, res, next) {
   try {
-    // Verificar parâmetro de telefone na URL
-    const phoneParam = req.query.phone;
-    
-    // Se houver um usuário na sessão, continuar
-    if (req.session.user) {
-      // Se o usuário for administrador, permitir acesso a qualquer número
-      if (req.session.user.is_admin) {
-        return next();
+    // Verificar se está tentando acessar a página de configuração diretamente
+    if (req.path === '/config') {
+      const phoneNumber = req.query.phone;
+      
+      // Verificar se o cliente WhatsApp está conectado
+      if (!client.info) {
+        console.log('Cliente WhatsApp não está conectado');
+        return res.redirect('/qrcode');
       }
       
-      // Se houver um parâmetro de telefone na URL
-      if (phoneParam) {
-        // Verificar se este telefone está autorizado para o usuário atual
-        if (phoneParam !== global.currentWhatsAppPhoneNumber) {
-          console.log(`Tentativa de acesso não autorizado ao telefone ${phoneParam}`);
-          return res.status(403).redirect('/unauthorized');
+      // Verificar se o número corresponde ao WhatsApp conectado
+      if (phoneNumber !== client.info.wid.user) {
+        console.log(`Número não corresponde ao WhatsApp conectado: ${phoneNumber}`);
+        return res.redirect('/qrcode');
+      }
+      
+      // Verificar se a sessão tem autenticação QR
+      if (!req.session.qrAuthenticated || !req.session.whatsappNumber) {
+        // Tentar recuperar da sessão global
+        if (global.currentSession && 
+            global.currentSession.qrAuthenticated && 
+            global.currentSession.whatsappNumber === phoneNumber) {
+          // Copiar autenticação da sessão global
+          req.session.qrAuthenticated = true;
+          req.session.qrAuthTime = global.currentSession.qrAuthTime;
+          req.session.whatsappNumber = phoneNumber;
+        } else {
+          console.log('Sessão QR não encontrada');
+          return res.redirect('/qrcode');
         }
       }
+      
+      // Verificar se o número na sessão corresponde ao solicitado
+      if (req.session.whatsappNumber !== phoneNumber) {
+        console.log(`Número na sessão (${req.session.whatsappNumber}) não corresponde ao solicitado (${phoneNumber})`);
+        return res.redirect('/qrcode');
+      }
+      
+      // Verificar se o token ainda é válido (15 minutos)
+      const tokenAge = Date.now() - (req.session.qrAuthTime || 0);
+      if (tokenAge > 15 * 60 * 1000) {
+        console.log('Token QR expirado');
+        delete req.session.qrAuthenticated;
+        delete req.session.qrAuthTime;
+        delete req.session.whatsappNumber;
+        return res.redirect('/qrcode');
+      }
+    }
+
+    // Se houver um usuário na sessão, verificar permissões
+    if (req.session.user) {
+      const phoneFromQuery = req.query.phone || req.body.phone;
+      
+      if (phoneFromQuery && req.session.user.whatsapp_number) {
+        if (phoneFromQuery !== req.session.user.whatsapp_number) {
+          console.log(`Tentativa de acesso não autorizado: Sessão=${req.session.user.whatsapp_number}, Solicitado=${phoneFromQuery}`);
+          return res.status(403).json({
+            success: false,
+            message: 'Acesso não autorizado a este número'
+          });
+        }
+      }
+      return next();
+    }
+    
+    // Se o cliente WhatsApp estiver conectado, criar sessão temporária
+    if (client.info) {
+      const currentPhone = client.info.wid.user;
+      const phoneFromQuery = req.query.phone || req.body.phone;
+      
+      if (phoneFromQuery && phoneFromQuery !== currentPhone) {
+        console.log(`Tentativa de acesso não autorizado: WhatsApp=${currentPhone}, Solicitado=${phoneFromQuery}`);
+        return res.status(403).json({
+          success: false,
+          message: 'Acesso não autorizado a este número'
+        });
+      }
+      
+      // Criar uma sessão temporária
+      console.log('Cliente WhatsApp conectado, criando sessão temporária');
+      const whatsappUser = await findOrCreateWhatsAppUser(currentPhone);
+      
+      if (!whatsappUser) {
+        return res.status(403).json({
+          success: false,
+          message: 'Usuário não encontrado'
+        });
+      }
+      
+      req.session.user = {
+        id: whatsappUser.id,
+        whatsapp_number: currentPhone,
+        auth_type: 'whatsapp'
+      };
       
       return next();
     }
     
-    // Se o cliente WhatsApp estiver conectado, criamos uma sessão temporária
-    if (client.info) {
-      // O cliente está conectado, vamos permitir o acesso
-      console.log('Cliente WhatsApp conectado, permitindo acesso sem login tradicional');
-      
-      // Se houver um parâmetro de telefone na URL, verificar se é o mesmo conectado
-      if (phoneParam && phoneParam !== global.currentWhatsAppPhoneNumber) {
-        console.log(`Tentativa de acesso não autorizado ao telefone ${phoneParam}`);
-        return res.status(403).redirect('/unauthorized');
-      }
-      
-      // Verificar se temos o ID do usuário do WhatsApp na variável global
-      if (global.currentWhatsAppUserId) {
-        // Criar uma sessão baseada no usuário do WhatsApp
-        console.log(`Criando sessão para usuário WhatsApp ID: ${global.currentWhatsAppUserId}`);
-        
-        // IMPORTANTE: Definir req.session.user para que as rotas de API possam acessar req.session.user.id
-        req.session.user = {
-          id: global.currentWhatsAppUserId,
-          auth_type: 'whatsapp'
-        };
-        
-        if (!req.session.whatsappUser) {
-          req.session.whatsappUser = {
-            id: global.currentWhatsAppUserId,
-            auth_type: 'whatsapp'
-          };
-          console.log(`Sessão criada para usuário WhatsApp ID: ${global.currentWhatsAppUserId}`);
-        }
-        
-        return next();
-      } else {
-        // Criar um usuário temporário para a sessão
-        console.log('WhatsApp conectado, mas sem ID de usuário. Criando usuário temporário.');
-        
-        try {
-          // Encontrar ou criar um usuário genérico para WhatsApp
-          let tempUser = await User.findOne({ where: { name: 'Usuário WhatsApp Temporário' } });
-          
-          if (!tempUser) {
-            // Criar usuário temporário
-            tempUser = await User.create({
-              name: 'Usuário WhatsApp Temporário',
-              auth_type: 'whatsapp',
-              last_login: new Date()
-            });
-          }
-          
-          global.currentWhatsAppUserId = tempUser.id;
-          
-          // Definir o usuário na sessão
-          req.session.user = {
-            id: tempUser.id,
-            name: tempUser.name,
-            auth_type: 'whatsapp'
-          };
-          
-          console.log(`Usuário temporário criado/encontrado com ID: ${tempUser.id}`);
-          
-          // Criamos uma sessão temporária genérica
-          if (!req.session.whatsappConnected) {
-            req.session.whatsappConnected = true;
-          }
-          
-          return next();
-        } catch (error) {
-          console.error('Erro ao criar usuário temporário:', error);
-          return res.status(500).json({
-            success: false,
-            message: 'Erro ao criar usuário temporário',
-            error: error.message
-          });
-        }
-      }
-    }
-    
-    // Se não houver usuário na sessão e o WhatsApp não estiver conectado, redirecionar para página de QR Code
+    // Se não houver autenticação, redirecionar para QR code
     res.redirect('/qrcode');
   } catch (error) {
     console.error('Erro no middleware de autenticação:', error);
@@ -264,6 +287,53 @@ async function isAuthenticated(req, res, next) {
     });
   }
 }
+
+// Middleware de verificação de número do WhatsApp
+async function verifyWhatsAppNumber(req, res, next) {
+  try {
+    // Verificar se o usuário está autenticado
+    if (!req.session.user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Usuário não autenticado'
+      });
+    }
+
+    // Obter número do WhatsApp da URL ou query params
+    const urlNumber = req.params.number || req.query.phone;
+
+    // Se não houver número na URL, continuar
+    if (!urlNumber) {
+      return next();
+    }
+
+    // Verificar se o número da URL corresponde ao número autenticado
+    if (global.currentWhatsAppPhoneNumber !== urlNumber) {
+      console.log(`Tentativa de acesso não autorizado: URL=${urlNumber}, Autenticado=${global.currentWhatsAppPhoneNumber}`);
+      return res.status(403).json({
+        success: false,
+        message: 'Acesso não autorizado a este número'
+      });
+    }
+
+    next();
+  } catch (error) {
+    console.error('Erro na verificação do número:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erro interno do servidor',
+      error: error.message
+    });
+  }
+}
+
+// Middleware para verificar se o QR code foi escaneado
+const checkQRCodeScanned = async (req, res, next) => {
+  if (!req.session.qrCodeScanned) {
+    return res.redirect('/qrcode?redirect=/config');
+  }
+  next();
+};
 
 // Configuração do OpenAI
 let openai;
@@ -306,33 +376,64 @@ function createOpenAIClientLocal() {
 
 // Configuração do cliente WhatsApp
 const client = new Client({
-  puppeteer: {
-    args: [
-      '--no-sandbox',
-      '--disable-setuid-sandbox',
-      '--disable-dev-shm-usage',
-      '--disable-accelerated-2d-canvas',
-      '--no-first-run',
-      '--no-zygote',
-      '--single-process',
-      '--disable-gpu',
-      '--disable-web-security',
-      '--disable-features=IsolateOrigins,site-per-process',
-      '--ignore-certificate-errors',
-      '--ignore-certificate-errors-spki-list',
-      '--allow-insecure-localhost'
-    ],
-    headless: true,
-    timeout: 120000,
-    executablePath: process.env.PUPPETEER_EXECUTABLE_PATH
-  },
-  authStrategy: new LocalAuth({
-    clientId: 'whatsgpt-client',
-    dataPath: './.wwebjs_auth'
-  }),
-  restartOnAuthFail: true,
-  qrMaxRetries: 5,
-  qrTimeoutMs: 120000
+    authStrategy: new LocalAuth({
+        clientId: 'whatsgpt-client',
+        dataPath: './.wwebjs_auth'
+    }),
+    puppeteer: {
+        headless: true,
+        args: [
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-dev-shm-usage',
+            '--disable-gpu',
+            '--disable-extensions',
+            '--disable-popup-blocking',
+            '--disable-translate',
+            '--disable-background-timer-throttling',
+            '--disable-backgrounding-occluded-windows',
+            '--disable-renderer-backgrounding',
+            '--disable-infobars',
+            '--disable-features=site-per-process',
+            '--disable-sync',
+            '--disable-notifications',
+            '--disable-background-networking',
+            '--disable-breakpad',
+            '--disable-client-side-phishing-detection',
+            '--disable-component-update',
+            '--disable-domain-reliability',
+            '--disable-hang-monitor',
+            '--disable-ipc-flooding-protection',
+            '--disable-prompt-on-repost',
+            '--metrics-recording-only',
+            '--no-default-browser-check',
+            '--safebrowsing-disable-auto-update',
+            '--password-store=basic',
+            '--use-mock-keychain',
+            '--window-size=1280,720',
+            '--window-position=0,0',
+            '--remote-debugging-port=0'
+        ],
+        executablePath: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+        ignoreDefaultArgs: ['--enable-automation'],
+        protocolTimeout: 120000,
+        defaultViewport: {
+            width: 1280,
+            height: 720
+        },
+        browserWSEndpoint: null,
+        handleSIGINT: true,
+        handleSIGTERM: true,
+        handleSIGHUP: true,
+        timeout: 120000
+    },
+    restartOnAuthFail: true,
+    qrMaxRetries: 5,
+    takeoverOnConflict: true,
+    takeoverTimeoutMs: 0,
+    authTimeoutMs: 120000,
+    disableSpins: true,
+    markOnlineAvailable: false
 });
 
 // Função para enviar mensagem para o WhatsApp
@@ -397,6 +498,59 @@ async function generateGPTResponse(prompt, message, model = 'gpt-3.5-turbo') {
     throw error;
   }
 }
+
+// Função para gerar token de acesso
+function generateAccessToken(userId, phoneNumber) {
+  return crypto
+    .createHash('sha256')
+    .update(`${userId}-${phoneNumber}-${process.env.SESSION_SECRET}`)
+    .digest('hex');
+}
+
+// Middleware para validar token de acesso
+async function validateAccessToken(req, res, next) {
+  try {
+    const token = req.headers['x-access-token'] || req.query.token;
+    
+    if (!token) {
+      return res.status(401).json({
+        success: false,
+        message: 'Token de acesso não fornecido'
+      });
+    }
+
+    if (!req.session.user || !req.session.user.id) {
+      return res.status(401).json({
+        success: false,
+        message: 'Sessão inválida'
+      });
+    }
+
+    const expectedToken = generateAccessToken(req.session.user.id, global.currentWhatsAppPhoneNumber);
+    
+    if (token !== expectedToken) {
+      console.log(`Token inválido recebido: ${token}`);
+      return res.status(403).json({
+        success: false,
+        message: 'Token de acesso inválido'
+      });
+    }
+
+    next();
+  } catch (error) {
+    console.error('Erro na validação do token:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erro interno do servidor',
+      error: error.message
+    });
+  }
+}
+
+// Aplicar middleware de validação de token nas rotas sensíveis
+app.use('/api/bot-config', validateAccessToken);
+app.use('/api/messages', validateAccessToken);
+app.use('/api/users', validateAccessToken);
 
 // Rota para testar o GPT com uma configuração específica
 app.post('/api/config/test-gpt', isAuthenticated, async (req, res) => {
@@ -706,58 +860,65 @@ app.post('/api/config/activate/:id', isAuthenticated, async (req, res) => {
 app.get('/api/config', isAuthenticated, async (req, res) => {
   try {
     // Verificar se há um número de telefone na query
-    const phoneNumber = req.query.phone;
+    const phoneNumber = req.query.phone || global.currentWhatsAppPhoneNumber;
     
-    if (phoneNumber) {
-      // Usar o banco de dados específico do usuário
-      try {
-        const db = await getUserDatabase(phoneNumber);
-        const configs = await db.models.UserBotConfig.findAll({
-          order: [['is_active', 'DESC'], ['name', 'ASC']]
-        });
-        
-        return res.json({
-          success: true,
-          configs: configs.map(config => ({
-            id: config.id,
-            name: config.name,
-            is_active: config.is_active,
-            model: config.model,
-            prompt: config.prompt,
-            additional_info: config.additional_info || '',
-            urls: config.urls || '[]',
-            use_urls: config.use_urls || false,
-            use_files: config.use_files || false,
-            pdf_filenames: config.pdf_filenames || '[]',
-            xlsx_filenames: config.xlsx_filenames || '[]',
-            csv_filenames: config.csv_filenames || '[]'
-          }))
-        });
-      } catch (dbError) {
-        console.error(`Erro ao buscar configurações para telefone ${phoneNumber}:`, dbError);
-        return res.status(500).json({
-          success: false,
-          message: `Erro ao buscar configurações: ${dbError.message}`
-        });
+    if (!phoneNumber) {
+      return res.status(400).json({
+        success: false,
+        message: 'Número de telefone não fornecido'
+      });
+    }
+    
+    console.log(`Buscando configurações para o número: ${phoneNumber}`);
+    
+    // Usar o banco de dados específico do usuário
+    try {
+      const db = await getUserDatabase(phoneNumber);
+      
+      // Verificar se o banco de dados foi inicializado
+      if (!db || !db.models || !db.models.UserBotConfig) {
+        throw new Error('Banco de dados do usuário não inicializado corretamente');
       }
-    } else {
-      // Buscar todas as configurações do usuário atual
-      const configs = await BotConfig.findAll({
-        where: { user_id: req.session.user.id },
+      
+      const configs = await db.models.UserBotConfig.findAll({
         order: [['is_active', 'DESC'], ['name', 'ASC']]
       });
+      
+      // Se não houver configurações, criar uma padrão
+      if (!configs || configs.length === 0) {
+        console.log('Nenhuma configuração encontrada, criando configuração padrão...');
+        const defaultConfig = await db.models.UserBotConfig.create({
+          name: 'Configuração Padrão',
+          prompt: 'Você é um assistente virtual que responde perguntas de forma educada e concisa.',
+          model: 'gpt-3.5-turbo',
+          is_active: true
+        });
+        
+        configs.push(defaultConfig);
+      }
       
       return res.json({
         success: true,
         configs: configs.map(config => ({
           id: config.id,
           name: config.name,
-          prompt: config.prompt,
-          additional_info: config.additional_info,
+          is_active: config.is_active,
           model: config.model,
-          urls: config.urls,
-          is_active: config.is_active
+          prompt: config.prompt,
+          additional_info: config.additional_info || '',
+          urls: config.urls || '[]',
+          use_urls: config.use_urls || false,
+          use_files: config.use_files || false,
+          pdf_filenames: config.pdf_filenames || '[]',
+          xlsx_filenames: config.xlsx_filenames || '[]',
+          csv_filenames: config.csv_filenames || '[]'
         }))
+      });
+    } catch (dbError) {
+      console.error(`Erro ao buscar configurações para telefone ${phoneNumber}:`, dbError);
+      return res.status(500).json({
+        success: false,
+        message: `Erro ao buscar configurações: ${dbError.message}`
       });
     }
   } catch (error) {
@@ -1187,6 +1348,14 @@ app.post('/api/login', async (req, res) => {
 
 // Rota para página de QR Code
 app.get('/qrcode', (req, res) => {
+  // Salvar a sessão atual globalmente para uso posterior
+  global.currentSession = req.session;
+  
+  // Limpar autenticação QR anterior
+  delete req.session.qrAuthenticated;
+  delete req.session.qrAuthTime;
+  
+  // Enviar página do QR code
   res.sendFile(path.join(__dirname, 'public', 'qrcode.html'));
 });
 
@@ -1230,46 +1399,13 @@ app.get('/get-qrcode', (req, res) => {
   }
 });
 
-// Função para limpar a pasta de autenticação do WhatsApp
-async function clearWhatsAppAuth() {
-  const authPath = path.join(__dirname, '.wwebjs_auth');
-  const cachePath = path.join(__dirname, '.wwebjs_cache');
-  
-  console.log('Limpando arquivos de autenticação do WhatsApp...');
-  
-  try {
-    // Remover pasta .wwebjs_auth
-    if (fs.existsSync(authPath)) {
-      await rimraf(authPath);
-      console.log('Pasta .wwebjs_auth removida com sucesso');
-    }
-    
-    // Remover pasta .wwebjs_cache
-    if (fs.existsSync(cachePath)) {
-      await rimraf(cachePath);
-      console.log('Pasta .wwebjs_cache removida com sucesso');
-    }
-    
-    return true;
-  } catch (error) {
-    console.error('Erro ao limpar arquivos de autenticação:', error);
-    return false;
-  }
-}
-
 // Rota para iniciar a geração do QR code
-app.get('/api/qrcode/generate', async (req, res) => {
+app.get('/api/qrcode/generate', (req, res) => {
   try {
     console.log('Solicitação para gerar QR code recebida');
     
     // Verificar parâmetro de forçar desconexão
     const forceNew = req.query.force === 'true';
-    
-    // Se estamos forçando um novo QR code, limpar a sessão anterior
-    if (forceNew) {
-      await clearWhatsAppAuth();
-      global.qrCodeAttempts = 0;
-    }
     
     // Verificar se o cliente já está conectado
     if (client && client.info && !forceNew) {
@@ -1281,6 +1417,21 @@ app.get('/api/qrcode/generate', async (req, res) => {
         status: 'connected',
         sessionId: client.info.wid.user,
         phoneNumber: client.info.wid.user
+      });
+    }
+    
+    // Se estamos forçando um novo QR code e já estamos conectados
+    if (forceNew && client && client.info) {
+      console.log('Forçando geração de novo QR code...');
+      global.forceNewQrCode = true;
+      
+      // Iniciar processo de desconexão e nova inicialização
+      initializeClient();
+      
+      return res.json({
+        success: true,
+        status: 'regenerating',
+        message: 'Gerando novo QR code, aguarde...'
       });
     }
     
@@ -1319,8 +1470,64 @@ app.get('/api/qrcode/generate', async (req, res) => {
 });
 
 // Rota para página de configuração
-app.get('/config', isAuthenticated, (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'config.html'));
+app.get('/config', isAuthenticated, async (req, res) => {
+  try {
+    // Obter número do telefone da query
+    const phoneNumber = req.query.phone;
+    
+    if (!phoneNumber) {
+      console.log('Número de telefone não fornecido na query');
+      return res.redirect('/qrcode');
+    }
+    
+    // Verificar se o número corresponde ao usuário autenticado
+    if (req.session.user && req.session.user.whatsapp_number !== phoneNumber) {
+      console.log(`Tentativa de acesso não autorizado: Sessão=${req.session.user.whatsapp_number}, Solicitado=${phoneNumber}`);
+      return res.status(403).send('Acesso não autorizado a este número');
+    }
+    
+    // Verificar se o cliente WhatsApp está conectado com este número
+    if (client.info && client.info.wid.user !== phoneNumber) {
+      console.log(`Número de telefone não corresponde ao WhatsApp conectado: ${phoneNumber}`);
+      return res.redirect('/qrcode');
+    }
+    
+    // Verificar se o usuário existe
+    const whatsappUser = await findWhatsAppUserByPhone(phoneNumber);
+    if (!whatsappUser) {
+      console.log('Usuário WhatsApp não encontrado');
+      return res.redirect('/qrcode');
+    }
+    
+    // Verificar banco de dados do usuário
+    try {
+      const db = await getUserDatabase(phoneNumber);
+      if (!db || !db.models || !db.models.UserBotConfig) {
+        throw new Error('Banco de dados do usuário não inicializado');
+      }
+      
+      // Verificar configurações existentes
+      const configCount = await db.models.UserBotConfig.count();
+      if (configCount === 0) {
+        await db.models.UserBotConfig.create({
+          name: 'Configuração Padrão',
+          prompt: 'Você é um assistente virtual que responde perguntas de forma educada e concisa.',
+          model: 'gpt-3.5-turbo',
+          is_active: true
+        });
+        console.log('Configuração padrão criada para o usuário');
+      }
+    } catch (dbError) {
+      console.error('Erro ao verificar banco de dados do usuário:', dbError);
+      return res.status(500).send('Erro ao acessar configurações. Por favor, tente novamente.');
+    }
+    
+    // Se chegou até aqui, tudo está ok
+    res.sendFile(path.join(__dirname, 'public', 'config.html'));
+  } catch (error) {
+    console.error('Erro ao acessar página de configuração:', error);
+    res.status(500).send('Erro ao carregar página de configuração. Por favor, tente novamente.');
+  }
 });
 
 // Rota para logout
@@ -1329,23 +1536,6 @@ app.get('/logout', (req, res) => {
   req.session.destroy();
   // Redirecionar para a página inicial
   res.redirect('/');
-});
-
-// Rota para página de acesso não autorizado
-app.get('/unauthorized', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'unauthorized.html'));
-});
-
-// Rota para página de login
-app.get('/login', (req, res) => {
-  // Se já estiver autenticado, redirecionar para página de configuração
-  if (req.session && req.session.user) {
-    const redirectTo = req.query.redirect || 'config';
-    const phoneParam = req.query.phone ? `?phone=${req.query.phone}` : '';
-    return res.redirect(`/${redirectTo}${phoneParam}`);
-  }
-  
-  res.sendFile(path.join(__dirname, 'public', 'login.html'));
 });
 
 // Configuração do Multer para upload de arquivos
@@ -1532,6 +1722,44 @@ app.post('/api/upload-test', upload.single('file'), async (req, res) => {
   }
 });
 
+// Rota para gerar token de acesso
+app.get('/api/access-token', isAuthenticated, (req, res) => {
+  try {
+    if (!req.session.user || !req.session.user.id || !global.currentWhatsAppPhoneNumber) {
+      return res.status(401).json({
+        success: false,
+        message: 'Usuário não autenticado ou número do WhatsApp não disponível'
+      });
+    }
+
+    const token = generateAccessToken(req.session.user.id, global.currentWhatsAppPhoneNumber);
+    
+    res.json({
+      success: true,
+      token
+    });
+  } catch (error) {
+    console.error('Erro ao gerar token:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erro ao gerar token de acesso',
+      error: error.message
+    });
+  }
+});
+
+// Rota para marcar QR code como escaneado
+app.post('/api/qrcode/scanned', isAuthenticated, async (req, res) => {
+  try {
+    req.session.qrCodeScanned = true;
+    const redirectUrl = req.query.redirect || '/config';
+    res.json({ success: true, redirectUrl });
+  } catch (error) {
+    console.error('Erro ao marcar QR code como escaneado:', error);
+    res.status(500).json({ success: false, message: 'Erro ao processar QR code' });
+  }
+});
+
 // Rota para página não encontrada
 app.use((req, res) => {
   res.status(404).sendFile(path.join(__dirname, 'public', '404.html'));
@@ -1570,397 +1798,48 @@ app.use((err, req, res, next) => {
 
 // Função para inicializar o cliente WhatsApp
 async function initializeClient() {
-  console.log('Inicializando cliente WhatsApp...');
-  
-  try {
-    // Verificar se o cliente já está sendo inicializado
-    if (global.isWhatsAppInitializing) {
-      console.log('Cliente WhatsApp já está sendo inicializado. Ignorando chamada duplicada.');
-      return;
-    }
+    console.log('Inicializando cliente WhatsApp...');
     
-    // Limpar arquivos de autenticação antes de inicializar
-    await clearWhatsAppAuth();
-    
-    // Definir flag para evitar inicializações duplicadas
-    global.isWhatsAppInitializing = true;
-    
-    // Resetar contador de QR code
-    global.qrCodeAttempts = 0;
-    
-    // Limpar tentativas anteriores de reconexão
-    if (global.reconnectTimeout) {
-      clearTimeout(global.reconnectTimeout);
-      global.reconnectTimeout = null;
-    }
-    
-    // Se o cliente já estiver conectado e um QR code for explicitamente solicitado, desconectar primeiro
-    if (global.forceNewQrCode && client && client.info) {
-      console.log('Forçando desconexão para gerar novo QR code...');
-      try {
-        client.logout().then(() => {
-          console.log('Cliente desconectado com sucesso para gerar novo QR code');
-          // Resetar a variável para não ficar em loop de desconexão
-          global.forceNewQrCode = false;
-          
-          // Pequeno atraso para garantir que tudo foi limpo
-          setTimeout(() => {
-            // Chamar initialize() explicitamente
-            console.log('Chamando client.initialize()...');
-            client.initialize().catch(err => {
-              console.error('Erro ao inicializar cliente após forçar desconexão:', err);
-              global.isWhatsAppInitializing = false;
-            });
-          }, 1000);
-        }).catch(err => {
-          console.error('Erro ao desconectar cliente:', err);
-          global.isWhatsAppInitializing = false;
-        });
-      } catch (error) {
-        console.error('Erro ao tentar desconectar cliente:', error);
+    try {
+        // Verificar se o cliente já está sendo inicializado
+        if (global.isWhatsAppInitializing) {
+            console.log('Cliente WhatsApp já está sendo inicializado. Ignorando chamada duplicada.');
+            return;
+        }
+        
+        // Definir flag para evitar inicializações duplicadas
+        global.isWhatsAppInitializing = true;
+        
+        // Limpar tentativas anteriores de reconexão
+        if (global.reconnectTimeout) {
+            clearTimeout(global.reconnectTimeout);
+            global.reconnectTimeout = null;
+        }
+        
+        // Limpar sessão antes de inicializar
+        await cleanupWhatsAppSession();
+        
+        // Aguardar um momento antes de inicializar
+        await new Promise(resolve => setTimeout(resolve, 5000));
+        
+        // Inicializar o cliente
+        console.log('Chamando client.initialize()...');
+        await client.initialize();
+        console.log('Cliente inicializado com sucesso');
+        
+        // Resetar flag após inicialização bem-sucedida
         global.isWhatsAppInitializing = false;
-      }
-      return;
+        
+    } catch (error) {
+        console.error('Erro ao inicializar cliente:', error);
+        global.isWhatsAppInitializing = false;
+        
+        // Tentar novamente após 10 segundos
+        global.reconnectTimeout = setTimeout(() => {
+            console.log('Tentando inicializar novamente após erro...');
+            initializeClient();
+        }, 10000);
     }
-    
-    // Eventos do cliente WhatsApp
-    client.on('qr', (qr) => {
-      // Quando QR code é recebido
-      console.log('QR Code recebido, gerando imagem...');
-      global.qrCode = qr;
-      
-      // Limpar qualquer QR code anterior
-      if (global.qrCodeInterval) {
-        clearInterval(global.qrCodeInterval);
-        global.qrCodeInterval = null;
-      }
-      
-      // Gerar imagem do QR code em base64 antes de enviar
-      qrcode.toDataURL(qr, (err, dataUrl) => {
-        if (err) {
-          console.error('Erro ao gerar imagem do QR code:', err);
-          return;
-        }
-        
-        // Emitir evento de QR code para atualização na interface
-        io.emit('qrcode', dataUrl);
-        console.log('QR code enviado para cliente');
-        
-        // Configurar um intervalo para reenviar o QR code a cada 30 segundos
-        // Isso ajuda a manter o QR code visível mesmo se o cliente reconectar
-        global.qrCodeInterval = setInterval(() => {
-          if (global.qrCode) {
-            io.emit('qrcode', dataUrl);
-            console.log('QR code reenviado para cliente');
-          } else {
-            clearInterval(global.qrCodeInterval);
-            global.qrCodeInterval = null;
-          }
-        }, 30000);
-      });
-    });
-    
-    client.on('ready', async () => {
-      console.log('✅ Cliente WhatsApp está pronto!');
-      io.emit('whatsapp-status', { status: 'connected', message: 'WhatsApp conectado com sucesso!' });
-      global.isWhatsAppInitializing = false; // Reinicialização permitida após desconexão
-      
-      // Resetar contador de tentativas de reconexão
-      global.reconnectAttempts = 0;
-      
-      try {
-        // Obter número de telefone do cliente WhatsApp
-        let phoneNumber = null;
-        if (client.info) {
-          // Formato do número: 1234567890@c.us
-          phoneNumber = client.info.wid.user;
-          console.log(`Número de telefone obtido do WhatsApp: ${phoneNumber}`);
-          
-          // Emitir evento com o número de telefone para o frontend
-          io.emit('whatsapp-status', { 
-            status: 'connected', 
-            message: 'WhatsApp conectado com sucesso!',
-            phoneNumber: phoneNumber
-          });
-          
-          // Salvar número de telefone na variável global para acesso fácil
-          global.currentWhatsAppPhoneNumber = phoneNumber;
-          
-          // Buscar ou criar usuário para este número
-          const whatsappUser = await findOrCreateWhatsAppUser(phoneNumber);
-          if (whatsappUser) {
-            global.currentWhatsAppUserId = whatsappUser.id;
-            console.log(`Usuário WhatsApp definido com ID: ${whatsappUser.id} para o número ${phoneNumber}`);
-            
-            // Verificar se o usuário já tem uma configuração
-            try {
-              const db = await getUserDatabase(phoneNumber);
-              console.log('Conexão estabelecida com o banco de dados do usuário', phoneNumber);
-              
-              // Verificar se existe alguma configuração
-              const configExists = await db.models.UserBotConfig.findOne();
-              
-              if (!configExists) {
-                // Criar configuração padrão
-                const defaultConfig = await db.models.UserBotConfig.create({
-                  name: 'Configuração Padrão',
-                  prompt: 'Você é um assistente virtual que responde perguntas de forma educada e concisa. Se não souber a resposta, diga que não tem essa informação.',
-                  is_active: true,
-                  model: 'gpt-3.5-turbo'
-                });
-                
-                console.log(`Configuração padrão criada para o número ${phoneNumber}: ${defaultConfig.id}`);
-              }
-              
-              // Carregar configuração ativa para o usuário
-              await loadUserActiveConfig(phoneNumber);
-              console.log(`Configurações carregadas para o número ${phoneNumber}`);
-            } catch (error) {
-              console.error(`Erro ao configurar banco de dados para ${phoneNumber}:`, error);
-            }
-            
-            return; // Sair aqui para não executar o código de usuário temporário
-          }
-        } else {
-          console.warn('client.info não está disponível, não foi possível obter o número de telefone');
-        }
-        
-        // Código de fallback usando usuário temporário (executado apenas se não conseguir o número de telefone)
-        if (!global.currentWhatsAppUserId) {
-          // Buscar ou criar usuário temporário
-          const tempUser = await User.findOne({ where: { name: 'Usuário WhatsApp Temporário' } });
-          
-          if (tempUser) {
-            global.currentWhatsAppUserId = tempUser.id;
-            console.log(`Usuário temporário definido com ID: ${tempUser.id}`);
-            
-            // Verificar se o usuário já tem uma configuração
-            const configExists = await BotConfig.findOne({
-              where: { user_id: tempUser.id }
-            });
-            
-            if (!configExists) {
-              // Criar configuração padrão
-              const defaultConfig = await BotConfig.create({
-                user_id: tempUser.id,
-                name: 'Configuração Padrão',
-                prompt: 'Você é um assistente virtual que responde perguntas de forma educada e concisa. Se não souber a resposta, diga que não tem essa informação.',
-                is_active: true,
-                model: 'gpt-3.5-turbo'
-              });
-              
-              console.log(`Configuração padrão criada para usuário temporário: ${defaultConfig.id}`);
-            }
-            
-            // Carregar configurações ativas para o usuário
-            console.log('Carregando configurações ativas para o usuário do WhatsApp...');
-            await loadActiveConfiguration(tempUser.id);
-            console.log('Configurações carregadas com sucesso!');
-          }
-        }
-      } catch (error) {
-        console.error('Erro ao configurar usuário para WhatsApp:', error);
-      }
-    });
-    
-    client.on('authenticated', () => {
-      console.log('✅ Autenticado no WhatsApp!');
-      io.emit('whatsapp-status', { status: 'authenticated', message: 'Autenticado com sucesso!' });
-      
-      // Limpar o QR code e o intervalo quando autenticado
-      global.qrCode = null;
-      if (global.qrCodeInterval) {
-        clearInterval(global.qrCodeInterval);
-        global.qrCodeInterval = null;
-      }
-      
-      // Resetar contador de tentativas de reconexão
-      global.reconnectAttempts = 0;
-    });
-    
-    client.on('auth_failure', (message) => {
-      console.error('❌ Falha na autenticação:', message);
-      io.emit('whatsapp-status', { status: 'auth_failure', message: 'Falha na autenticação. Por favor, tente novamente.' });
-      global.isWhatsAppInitializing = false; // Permitir reinicialização após falha
-      
-      // Incrementar contador de tentativas
-      global.reconnectAttempts = (global.reconnectAttempts || 0) + 1;
-      
-      // Tentar reconectar com tempo de espera progressivo
-      const reconnectDelay = Math.min(30000, 5000 * global.reconnectAttempts);
-      console.log(`Tentando reconectar em ${reconnectDelay/1000} segundos (tentativa ${global.reconnectAttempts})...`);
-      
-      global.reconnectTimeout = setTimeout(() => {
-        console.log('Tentando reconectar após falha de autenticação...');
-        initializeClient();
-      }, reconnectDelay);
-    });
-    
-    client.on('disconnected', (reason) => {
-      console.log('❌ Cliente WhatsApp desconectado:', reason);
-      io.emit('whatsapp-status', { status: 'disconnected', message: 'Desconectado do WhatsApp: ' + reason });
-      
-      // Limpar o QR code e o intervalo quando desconectado
-      global.qrCode = null;
-      if (global.qrCodeInterval) {
-        clearInterval(global.qrCodeInterval);
-        global.qrCodeInterval = null;
-      }
-      
-      // Permitir reinicialização após desconexão
-      global.isWhatsAppInitializing = false;
-      
-      // Se a razão for LOGOUT, precisamos limpar os arquivos de sessão
-      if (reason === 'LOGOUT') {
-        console.log('Desconexão por logout detectada. Recomendamos executar o script limpar-sessao.js antes de reconectar.');
-        io.emit('whatsapp-status', { 
-          status: 'logout', 
-          message: 'Sessão encerrada. Por favor, execute o script de limpeza e reinicie o servidor.' 
-        });
-        return; // Não tentar reconectar automaticamente após logout
-      }
-      
-      // Incrementar contador de tentativas
-      global.reconnectAttempts = (global.reconnectAttempts || 0) + 1;
-      
-      // Tentar reconectar com tempo de espera progressivo
-      const reconnectDelay = Math.min(30000, 5000 * global.reconnectAttempts);
-      console.log(`Tentando reconectar em ${reconnectDelay/1000} segundos (tentativa ${global.reconnectAttempts})...`);
-      
-      global.reconnectTimeout = setTimeout(() => {
-        console.log('Tentando reconectar ao WhatsApp...');
-        initializeClient();
-      }, reconnectDelay);
-    });
-    
-    // Adicionar manipulador de mensagens
-    client.on('message', async (message) => {
-      // Ignorar mensagens enviadas pelo próprio bot
-      if (message.fromMe) return;
-      
-      console.log(`Mensagem recebida no WhatsApp: "${message.body.substring(0, 50)}${message.body.length > 50 ? '...' : ''}"`);
-      
-      try {
-        // Obter número de telefone do remetente
-        const senderNumber = message.from.split('@')[0];
-        console.log(`Mensagem de: ${senderNumber}`);
-        
-        // Carregar configuração ativa do usuário
-        const db = await getUserDatabase(global.currentWhatsAppPhoneNumber);
-        const userConfig = await db.models.UserBotConfig.findOne({
-          where: { is_active: true }
-        });
-        
-        if (!userConfig) {
-          console.error('Nenhuma configuração ativa encontrada para responder mensagem');
-          await message.reply('Desculpe, não foi possível processar sua mensagem. Configuração não encontrada.');
-          return;
-        }
-        
-        console.log('=== Configuração Carregada ===');
-        console.log(`Nome: ${userConfig.name}`);
-        console.log(`ID: ${userConfig.id}`);
-        console.log(`Modelo: ${userConfig.model}`);
-        console.log(`Prompt completo: ${userConfig.prompt}`);
-        
-        // Enviar "digitando" status
-        const chat = await message.getChat();
-        chat.sendStateTyping();
-        
-        // Verificar se existem URLs configuradas para extrair conteúdo
-        let urlContent = '';
-        let promptWithContext = userConfig.prompt;
-        
-        if (userConfig.urls && userConfig.use_urls !== false) {
-          try {
-            // Extrair as URLs do JSON armazenado
-            const urlList = JSON.parse(userConfig.urls);
-            
-            if (urlList && urlList.length > 0) {
-              console.log(`Extraindo conteúdo de ${urlList.length} URLs configuradas...`);
-              
-              // Importar função de extração de URLs
-              const { extractMultipleUrls } = require('./utils/urlProcessor');
-              
-              // Extrair conteúdo das URLs
-              urlContent = await extractMultipleUrls(urlList);
-              
-              if (urlContent) {
-                console.log(`Obtido conteúdo de URLs: ${urlContent.length} caracteres`);
-                promptWithContext = `${userConfig.prompt}\n\nInformações de contexto das URLs fornecidas:\n${urlContent}`;
-              }
-            }
-          } catch (urlError) {
-            console.error('Erro ao processar URLs:', urlError);
-            // Continuar com o prompt original em caso de erro
-            promptWithContext = userConfig.prompt;
-          }
-        }
-        
-        // Verificar se há conteúdo de arquivos para adicionar ao contexto
-        if (userConfig.pdf_content || userConfig.xlsx_content || userConfig.csv_content) {
-          let fileContent = '';
-          if (userConfig.pdf_content) fileContent += `\nConteúdo PDF:\n${userConfig.pdf_content}`;
-          if (userConfig.xlsx_content) fileContent += `\nConteúdo Excel:\n${userConfig.xlsx_content}`;
-          if (userConfig.csv_content) fileContent += `\nConteúdo CSV:\n${userConfig.csv_content}`;
-          
-          promptWithContext = `${promptWithContext}\n\nInformações de arquivos:\n${fileContent}`;
-        }
-        
-        console.log('=== Enviando para GPT ===');
-        console.log(`Prompt final: ${promptWithContext.substring(0, 100)}...`);
-        console.log(`Mensagem do usuário: ${message.body}`);
-        console.log(`Modelo usado: ${userConfig.model}`);
-        
-        // Enviar mensagem para o GPT
-        const response = await generateGPTResponse(
-          promptWithContext,
-          message.body,
-          userConfig.model || 'gpt-3.5-turbo'
-        );
-        
-        // Parar de "digitar"
-        chat.clearState();
-        
-        console.log(`Resposta do GPT: ${response.substring(0, 100)}...`);
-        
-        // Responder mensagem
-        await message.reply(response);
-        console.log('Resposta enviada com sucesso');
-        
-      } catch (error) {
-        console.error('Erro ao processar mensagem do WhatsApp:', error);
-        try {
-          await message.reply('Desculpe, ocorreu um erro ao processar sua mensagem. Por favor, tente novamente mais tarde.');
-        } catch (replyError) {
-          console.error('Erro ao enviar mensagem de erro:', replyError);
-        }
-      }
-    });
-    
-    // Inicializar o cliente
-    console.log('Chamando client.initialize()...');
-    client.initialize().catch(err => {
-      console.error('Erro ao inicializar cliente WhatsApp:', err);
-      global.isWhatsAppInitializing = false;
-      
-      // Tentar novamente após 10 segundos em caso de erro
-      setTimeout(() => {
-        console.log('Tentando inicializar novamente após erro...');
-        initializeClient();
-      }, 10000);
-    });
-    console.log('Cliente WhatsApp inicialização em andamento');
-  } catch (error) {
-    console.error('Erro ao inicializar cliente WhatsApp:', error);
-    global.isWhatsAppInitializing = false; // Resetar flag em caso de erro
-    
-    // Tentar novamente após 10 segundos
-    setTimeout(() => {
-      console.log('Tentando inicializar novamente após erro...');
-      initializeClient();
-    }, 10000);
-  }
 }
 
 // Função para carregar a configuração ativa do usuário
@@ -2045,23 +1924,490 @@ async function loadActiveConfiguration(userId) {
   }
 }
 
-// Rota para verificar autenticação
-app.get('/api/check-auth', (req, res) => {
-  const isAuth = req.session && req.session.user;
-  res.json({
-    authenticated: !!isAuth,
-    user: isAuth ? {
-      id: req.session.user.id,
-      auth_type: req.session.user.auth_type || 'whatsapp'
-    } : null
+// Função para limpar sessão do WhatsApp
+async function limparSessao() {
+  try {
+    console.log('🧹 Iniciando limpeza de sessões do WhatsApp...');
+    
+    // Tentar encerrar o cliente WhatsApp se existir
+    if (global.client) {
+      try {
+        await global.client.destroy();
+        console.log('Cliente WhatsApp destruído');
+      } catch (e) {
+        console.log('Erro ao destruir cliente WhatsApp:', e.message);
+      }
+      global.client = null;
+    }
+    
+    // Tentar matar processos do Chrome
+    try {
+      const { execSync } = require('child_process');
+      // No Windows, usar taskkill
+      if (process.platform === 'win32') {
+        execSync('taskkill /F /IM chrome.exe /T', { stdio: 'ignore' });
+        execSync('taskkill /F /IM chromedriver.exe /T', { stdio: 'ignore' });
+      } else {
+        // Em sistemas Unix, usar pkill
+        execSync('pkill -f chrome', { stdio: 'ignore' });
+        execSync('pkill -f chromedriver', { stdio: 'ignore' });
+      }
+      console.log('Processos Chrome encerrados');
+    } catch (e) {
+      // Ignorar erros se os processos não existirem
+      console.log('Nenhum processo Chrome encontrado para encerrar');
+    }
+    
+    // Aguardar um momento para garantir que os processos foram encerrados
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
+    // Verificar e excluir diretórios de sessão
+    const diretorios = [
+      '.wwebjs_auth',
+      '.wwebjs_auth_teste',
+      '.wwebjs_auth_novo',
+      'chrome-data'
+    ];
+    
+    for (const dir of diretorios) {
+      if (fs.existsSync(dir)) {
+        try {
+          // Tentar excluir normalmente primeiro
+          fs.rmSync(dir, { recursive: true, force: true });
+          console.log(`Diretório excluído com sucesso: ${dir}`);
+        } catch (error) {
+          if (error.code === 'EPERM' || error.code === 'EBUSY') {
+            console.log(`Tentando método alternativo para excluir ${dir}...`);
+            try {
+              // Tentar renomear primeiro
+              const tempDir = `${dir}_temp_${Date.now()}`;
+              fs.renameSync(dir, tempDir);
+              fs.rmSync(tempDir, { recursive: true, force: true });
+              console.log(`Diretório excluído com sucesso (método alternativo): ${dir}`);
+            } catch (e) {
+              console.error(`Não foi possível excluir ${dir}:`, e.message);
+            }
+          } else {
+            console.error(`Erro ao excluir ${dir}:`, error.message);
+          }
+        }
+      } else {
+        console.log(`Diretório não existe: ${dir}`);
+      }
+    }
+    
+    // Limpar variáveis globais
+    global.qrCode = null;
+    if (global.qrCodeInterval) {
+      clearInterval(global.qrCodeInterval);
+      global.qrCodeInterval = null;
+    }
+    global.isWhatsAppInitializing = false;
+    if (global.reconnectTimeout) {
+      clearTimeout(global.reconnectTimeout);
+      global.reconnectTimeout = null;
+    }
+    global.currentWhatsAppPhoneNumber = null;
+    global.reconnectAttempts = 0;
+    
+    console.log('✅ Limpeza de sessões concluída com sucesso!');
+    return true;
+  } catch (error) {
+    console.error('Erro ao limpar sessões:', error);
+    return false;
+  }
+}
+
+// Inicialização do servidor com limpeza de sessão
+const PORT = process.env.PORT || 3001;
+
+// Limpar sessão antes de iniciar o servidor
+limparSessao().then(() => {
+  server.listen(PORT, () => {
+    console.log(`✅ Servidor rodando na porta ${PORT}`);
+    
+    // Inicializa o cliente do WhatsApp após a limpeza
+    initializeClient();
   });
+}).catch(error => {
+  console.error('Erro ao iniciar servidor:', error);
 });
 
-// Inicialização do servidor
-const PORT = process.env.PORT || 3001;
-server.listen(PORT, () => {
-  console.log(`✅ Servidor rodando na porta ${PORT}`);
-  
-  // Inicializa o cliente do WhatsApp
-  initializeClient();
-}); // Final do server.listen 
+// Rota para verificar número do WhatsApp
+app.get('/api/whatsapp/verify', async (req, res) => {
+  try {
+    const phoneNumber = req.query.phone;
+    
+    if (!phoneNumber) {
+      return res.status(400).json({
+        success: false,
+        message: 'Número de telefone não fornecido'
+      });
+    }
+    
+    // Verificar se o cliente WhatsApp está conectado
+    if (!client.info) {
+      return res.status(401).json({
+        success: false,
+        message: 'WhatsApp não está conectado'
+      });
+    }
+    
+    // Verificar se o número corresponde ao WhatsApp conectado
+    if (client.info.wid.user !== phoneNumber) {
+      return res.status(403).json({
+        success: false,
+        message: 'Número não corresponde ao WhatsApp conectado'
+      });
+    }
+    
+    // Se chegou até aqui, o número é válido
+    return res.json({
+      success: true,
+      message: 'Número verificado com sucesso'
+    });
+  } catch (error) {
+    console.error('Erro ao verificar número do WhatsApp:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erro ao verificar número'
+    });
+  }
+});
+
+async function cleanupWhatsAppSession() {
+    console.log('🧹 Iniciando limpeza de sessões do WhatsApp...');
+    
+    try {
+        // Lista de diretórios para limpar
+        const directories = [
+            '.wwebjs_auth',
+            '.wwebjs_auth_teste',
+            '.wwebjs_auth_novo',
+            'chrome-data'
+        ];
+        
+        // Remove cada diretório
+        for (const dir of directories) {
+            try {
+                await fs.promises.rm(dir, { recursive: true, force: true });
+                console.log(`Diretório excluído com sucesso: ${dir}`);
+            } catch (error) {
+                if (error.code === 'ENOENT') {
+                    console.log(`Diretório não existe: ${dir}`);
+                } else {
+                    console.error(`Erro ao excluir diretório ${dir}:`, error);
+                }
+            }
+        }
+        
+        console.log('✅ Limpeza de sessões concluída com sucesso!');
+    } catch (error) {
+        console.error('❌ Erro durante a limpeza de sessões:', error);
+    }
+}
+
+// Configurar eventos do cliente
+client.on('qr', (qr) => {
+    console.log('QR Code recebido, gerando imagem...');
+    global.qrCode = qr;
+    
+    // Limpar qualquer QR code anterior
+    if (global.qrCodeInterval) {
+        clearInterval(global.qrCodeInterval);
+        global.qrCodeInterval = null;
+    }
+    
+    // Gerar imagem do QR code em base64 antes de enviar
+    qrcode.toDataURL(qr, (err, dataUrl) => {
+        if (err) {
+            console.error('Erro ao gerar imagem do QR code:', err);
+            return;
+        }
+        
+        // Emitir evento de QR code para atualização na interface
+        io.emit('qrcode', dataUrl);
+        console.log('QR code enviado para cliente');
+    });
+});
+
+client.on('ready', async () => {
+    try {
+        console.log('✅ Cliente WhatsApp está pronto!');
+        const phoneNumber = client.info.wid.user;
+        console.log('Número de telefone obtido do WhatsApp:', phoneNumber);
+        
+        // Armazenar o número globalmente
+        global.currentWhatsAppPhoneNumber = phoneNumber;
+        
+        // Criar ou buscar usuário do WhatsApp
+        console.log('Criando ou buscando usuário do WhatsApp...');
+        const whatsappUser = await findOrCreateWhatsAppUser(phoneNumber);
+        console.log('Usuário WhatsApp criado/encontrado:', whatsappUser.id);
+        
+        // Inicializar banco de dados do usuário
+        const db = await getUserDatabase(phoneNumber);
+        console.log('Conexão estabelecida com o banco de dados do usuário', phoneNumber);
+        
+        // Configurar a sessão para autenticação QR
+        if (global.currentSession) {
+            global.currentSession.qrAuthenticated = true;
+            global.currentSession.qrAuthTime = Date.now();
+            global.currentSession.whatsappNumber = phoneNumber;
+            console.log('Sessão configurada com sucesso:', {
+                qrAuthenticated: true,
+                phoneNumber: phoneNumber
+            });
+        }
+        
+        // Emitir evento de status para o frontend com URL de redirecionamento
+        io.emit('whatsapp-status', {
+            status: 'connected',
+            message: 'WhatsApp conectado com sucesso!',
+            phoneNumber: phoneNumber,
+            redirectUrl: `/config?phone=${phoneNumber}`
+        });
+        
+        // Limpar o QR code após conexão bem-sucedida
+        global.qrCode = null;
+        if (global.qrCodeInterval) {
+            clearInterval(global.qrCodeInterval);
+            global.qrCodeInterval = null;
+        }
+    } catch (error) {
+        console.error('Erro ao processar evento ready:', error);
+    }
+});
+
+client.on('authenticated', async () => {
+    try {
+        console.log('✅ Autenticado no WhatsApp!');
+        
+        // Aguardar um momento para garantir que client.info esteja disponível
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // Obter número do telefone de forma segura
+        const phoneNumber = client.info?.wid?.user || global.currentWhatsAppPhoneNumber;
+        
+        if (!phoneNumber) {
+            console.log('Número de telefone não disponível ainda, aguardando evento ready');
+            return;
+        }
+        
+        // Configurar a sessão para autenticação QR
+        if (global.currentSession) {
+            global.currentSession.qrAuthenticated = true;
+            global.currentSession.qrAuthTime = Date.now();
+            global.currentSession.whatsappNumber = phoneNumber;
+            console.log('Sessão configurada com sucesso:', {
+                qrAuthenticated: true,
+                phoneNumber: phoneNumber
+            });
+        }
+        
+        // Emitir evento de status com URL de redirecionamento
+        io.emit('whatsapp-status', { 
+            status: 'authenticated', 
+            message: 'Autenticado com sucesso!',
+            phoneNumber: phoneNumber,
+            redirectUrl: `/config?phone=${phoneNumber}`
+        });
+        
+        // Limpar o QR code quando autenticado
+        global.qrCode = null;
+        if (global.qrCodeInterval) {
+            clearInterval(global.qrCodeInterval);
+            global.qrCodeInterval = null;
+        }
+    } catch (error) {
+        console.error('Erro ao processar autenticação:', error);
+    }
+});
+
+client.on('auth_failure', async (message) => {
+    console.log('Falha na autenticação:', message);
+    try {
+        await client.destroy();
+        console.log('Cliente destruído após falha na autenticação');
+        
+        // Limpa a sessão
+        await cleanupWhatsAppSession();
+        
+        // Aguarda um tempo antes de tentar reconectar
+        setTimeout(async () => {
+            console.log('Tentando reconectar após falha na autenticação...');
+            try {
+                await client.initialize();
+                console.log('Cliente reinicializado com sucesso após falha na autenticação');
+            } catch (error) {
+                console.error('Erro ao reinicializar cliente após falha na autenticação:', error);
+            }
+        }, 10000);
+    } catch (error) {
+        console.error('Erro ao destruir cliente após falha na autenticação:', error);
+    }
+});
+
+client.on('disconnected', async (reason) => {
+    console.log('Cliente WhatsApp desconectado:', reason);
+    try {
+        await client.destroy();
+        console.log('Cliente destruído com sucesso');
+        
+        // Limpa a sessão
+        await cleanupWhatsAppSession();
+        
+        // Aguarda um tempo antes de tentar reconectar
+        setTimeout(async () => {
+            console.log('Tentando reconectar...');
+            try {
+                await client.initialize();
+                console.log('Cliente reinicializado com sucesso');
+            } catch (error) {
+                console.error('Erro ao reinicializar cliente:', error);
+            }
+        }, 10000);
+    } catch (error) {
+        console.error('Erro ao destruir cliente:', error);
+    }
+});
+
+client.on('message', async (message) => {
+    try {
+        console.log('Mensagem recebida:', message.body);
+        
+        // Ignorar mensagens de grupos
+        if (message.isGroupMsg) return;
+        
+        // Verificar se é uma mensagem do próprio bot
+        if (message.fromMe) return;
+        
+        // Verificar se o cliente está conectado e tem informações
+        if (!client.info) {
+            console.error('Cliente WhatsApp não está conectado');
+            await message.reply('Desculpe, o bot não está conectado corretamente. Por favor, aguarde um momento.');
+            return;
+        }
+
+        // Usar o número do WhatsApp do bot para acessar o banco de dados
+        const botPhoneNumber = client.info.wid.user;
+        if (!botPhoneNumber) {
+            console.error('Número do WhatsApp do bot não encontrado');
+            await message.reply('Desculpe, ocorreu um erro de configuração. Por favor, aguarde um momento.');
+            return;
+        }
+        
+        console.log(`Acessando banco de dados do bot com número: ${botPhoneNumber}`);
+        
+        // Inicializar banco de dados do bot
+        const db = await getUserDatabase(botPhoneNumber);
+        if (!db || !db.models || !db.models.UserBotConfig) {
+            console.error('Erro ao acessar banco de dados do bot');
+            await message.reply('Desculpe, ocorreu um erro ao acessar as configurações. Por favor, configure o bot primeiro.');
+            return;
+        }
+        
+        // Buscar configuração ativa do bot
+        let userConfig = null;
+        try {
+            userConfig = await db.models.UserBotConfig.findOne({
+                where: { is_active: true }
+            });
+            
+            if (!userConfig) {
+                console.log('Nenhuma configuração ativa encontrada, criando configuração padrão...');
+                userConfig = await db.models.UserBotConfig.create({
+                    name: 'Configuração Padrão',
+                    prompt: 'Você é um assistente útil e amigável. Responda de forma clara e concisa.',
+                    model: 'gpt-3.5-turbo',
+                    is_active: true,
+                    urls: '[]'
+                });
+                console.log(`Configuração padrão criada para o bot ${botPhoneNumber}`);
+            }
+        } catch (error) {
+            console.error('Erro ao buscar/criar configuração:', error);
+            await message.reply('Desculpe, ocorreu um erro ao carregar as configurações. Por favor, configure o bot primeiro.');
+            return;
+        }
+        
+        try {
+            // Construir o prompt completo com todas as informações
+            let fullPrompt = userConfig.prompt;
+            
+            // Adicionar conteúdo das URLs se existirem
+            if (userConfig.urls) {
+                try {
+                    const urls = JSON.parse(userConfig.urls);
+                    if (Array.isArray(urls) && urls.length > 0) {
+                        console.log('Adicionando informações das URLs ao prompt...');
+                        fullPrompt += '\n\nInformações adicionais das URLs:\n';
+                        for (const url of urls) {
+                            fullPrompt += `\n${url}`;
+                        }
+                    }
+                } catch (urlError) {
+                    console.error('Erro ao processar URLs:', urlError);
+                }
+            }
+
+            // Adicionar informações adicionais se existirem
+            if (userConfig.additional_info) {
+                console.log('Adicionando informações adicionais ao prompt...');
+                fullPrompt += '\n\nInformações adicionais:\n' + userConfig.additional_info;
+            }
+
+            // Adicionar conteúdo de arquivos se existirem
+            if (userConfig.pdf_content) {
+                console.log('Adicionando conteúdo PDF ao prompt...');
+                fullPrompt += '\n\nConteúdo de PDFs:\n' + userConfig.pdf_content;
+            }
+            if (userConfig.xlsx_content) {
+                console.log('Adicionando conteúdo Excel ao prompt...');
+                fullPrompt += '\n\nConteúdo de planilhas Excel:\n' + userConfig.xlsx_content;
+            }
+            if (userConfig.csv_content) {
+                console.log('Adicionando conteúdo CSV ao prompt...');
+                fullPrompt += '\n\nConteúdo de arquivos CSV:\n' + userConfig.csv_content;
+            }
+
+            console.log('Enviando mensagem para o GPT com prompt completo...');
+            
+            // Processar a mensagem com GPT usando o prompt completo
+            const response = await sendMessageToGPT(
+                fullPrompt,
+                message.body,
+                userConfig.model
+            );
+            
+            // Salvar conversa no histórico
+            try {
+                await db.models.ConversationHistory.create({
+                    user_message: message.body,
+                    bot_response: response,
+                    config_id: userConfig.id,
+                    sender_number: message.from.split('@')[0]
+                });
+                console.log('Conversa salva no histórico com sucesso');
+            } catch (historyError) {
+                console.error('Erro ao salvar conversa no histórico:', historyError);
+            }
+            
+            // Enviar resposta
+            await message.reply(response);
+            console.log('Resposta enviada com sucesso');
+            
+        } catch (gptError) {
+            console.error('Erro ao processar mensagem com GPT:', gptError);
+            await message.reply('Desculpe, ocorreu um erro ao processar sua mensagem. Por favor, tente novamente mais tarde.');
+        }
+        
+    } catch (error) {
+        console.error('Erro ao processar mensagem:', error);
+        try {
+            await message.reply('Desculpe, ocorreu um erro ao processar sua mensagem. Por favor, tente novamente mais tarde.');
+        } catch (replyError) {
+            console.error('Erro ao enviar mensagem de erro:', replyError);
+        }
+    }
+});

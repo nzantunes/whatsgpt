@@ -18,7 +18,10 @@ yarn-error.log*
 
 # Arquivos de sessão do WhatsApp
 .wwebjs_auth/
-.wwebjs_cache/
+.wwebjs_auth_teste/
+.wwebjs_auth_novo/
+.wwebjs_auth_simples/
+chrome-data/
 
 # Diretório de uploads
 uploads/
@@ -53,7 +56,4 @@ desktop.ini
 # Outros arquivos sensíveis
 *.key
 *.pem
-*.cert
-
-# Arquivos de banco de dados SQLite
-*.sqlite3 
+*.cert 
