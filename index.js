@@ -1991,11 +1991,11 @@ async function limparSessao() {
 }
 
 // Inicialização do servidor com limpeza de sessão
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 3000;
 
 // Limpar sessão antes de iniciar o servidor
 limparSessao().then(() => {
-  server.listen(PORT, () => {
+  server.listen(PORT, '0.0.0.0', () => {
     console.log(`✅ Servidor rodando na porta ${PORT}`);
     
     // Inicializa o cliente do WhatsApp após a limpeza
