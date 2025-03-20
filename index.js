@@ -388,7 +388,7 @@ const client = new Client({
             '--no-zygote',
             '--disable-gpu'
         ],
-        executablePath: '/usr/bin/chromium-browser'
+        executablePath: process.platform === 'linux' ? '/usr/bin/chromium' : undefined
     }
 });
 
