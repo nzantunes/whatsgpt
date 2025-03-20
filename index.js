@@ -261,21 +261,21 @@ async function isAuthenticated(req, res, next) {
       const whatsappUser = await findOrCreateWhatsAppUser(currentPhone);
       
       if (!whatsappUser) {
-        return res.status(403).json({
-          success: false,
-          message: 'Usuário não encontrado'
-        });
-      }
-      
-      req.session.user = {
+          return res.status(403).json({
+            success: false,
+            message: 'Usuário não encontrado'
+          });
+        }
+        
+        req.session.user = {
         id: whatsappUser.id,
         whatsapp_number: currentPhone,
-        auth_type: 'whatsapp'
-      };
+          auth_type: 'whatsapp'
+        };
+        
+        return next();
+      }
       
-      return next();
-    }
-    
     // Se não houver autenticação, redirecionar para QR code
     res.redirect('/qrcode');
   } catch (error) {
@@ -377,20 +377,8 @@ function createOpenAIClientLocal() {
 // Configuração do cliente WhatsApp
 const client = new Client({
     puppeteer: {
-        executablePath: process.platform === 'linux' ? '/usr/bin/chromium' : undefined,
-        headless: 'new',
-        args: [
-            '--no-sandbox',
-            '--disable-setuid-sandbox',
-            '--disable-dev-shm-usage',
-            '--disable-accelerated-2d-canvas',
-            '--no-first-run',
-            '--no-zygote',
-            '--single-process',
-            '--disable-gpu',
-            '--disable-extensions',
-            '--disable-software-rasterizer'
-        ]
+        headless: true,
+        args: ['--no-sandbox']
     }
 });
 
@@ -829,18 +817,18 @@ app.get('/api/config', isAuthenticated, async (req, res) => {
     
     console.log(`Buscando configurações para o número: ${phoneNumber}`);
     
-    // Usar o banco de dados específico do usuário
-    try {
-      const db = await getUserDatabase(phoneNumber);
+      // Usar o banco de dados específico do usuário
+      try {
+        const db = await getUserDatabase(phoneNumber);
       
       // Verificar se o banco de dados foi inicializado
       if (!db || !db.models || !db.models.UserBotConfig) {
         throw new Error('Banco de dados do usuário não inicializado corretamente');
       }
       
-      const configs = await db.models.UserBotConfig.findAll({
-        order: [['is_active', 'DESC'], ['name', 'ASC']]
-      });
+        const configs = await db.models.UserBotConfig.findAll({
+          order: [['is_active', 'DESC'], ['name', 'ASC']]
+        });
       
       // Se não houver configurações, criar uma padrão
       if (!configs || configs.length === 0) {
@@ -854,29 +842,29 @@ app.get('/api/config', isAuthenticated, async (req, res) => {
         
         configs.push(defaultConfig);
       }
-      
-      return res.json({
-        success: true,
-        configs: configs.map(config => ({
-          id: config.id,
-          name: config.name,
-          is_active: config.is_active,
-          model: config.model,
-          prompt: config.prompt,
-          additional_info: config.additional_info || '',
-          urls: config.urls || '[]',
-          use_urls: config.use_urls || false,
-          use_files: config.use_files || false,
-          pdf_filenames: config.pdf_filenames || '[]',
-          xlsx_filenames: config.xlsx_filenames || '[]',
-          csv_filenames: config.csv_filenames || '[]'
-        }))
-      });
-    } catch (dbError) {
-      console.error(`Erro ao buscar configurações para telefone ${phoneNumber}:`, dbError);
-      return res.status(500).json({
-        success: false,
-        message: `Erro ao buscar configurações: ${dbError.message}`
+        
+        return res.json({
+          success: true,
+          configs: configs.map(config => ({
+            id: config.id,
+            name: config.name,
+            is_active: config.is_active,
+            model: config.model,
+            prompt: config.prompt,
+            additional_info: config.additional_info || '',
+            urls: config.urls || '[]',
+            use_urls: config.use_urls || false,
+            use_files: config.use_files || false,
+            pdf_filenames: config.pdf_filenames || '[]',
+            xlsx_filenames: config.xlsx_filenames || '[]',
+            csv_filenames: config.csv_filenames || '[]'
+          }))
+        });
+      } catch (dbError) {
+        console.error(`Erro ao buscar configurações para telefone ${phoneNumber}:`, dbError);
+        return res.status(500).json({
+          success: false,
+          message: `Erro ao buscar configurações: ${dbError.message}`
       });
     }
   } catch (error) {
@@ -1481,7 +1469,7 @@ app.get('/config', isAuthenticated, async (req, res) => {
     }
     
     // Se chegou até aqui, tudo está ok
-    res.sendFile(path.join(__dirname, 'public', 'config.html'));
+  res.sendFile(path.join(__dirname, 'public', 'config.html'));
   } catch (error) {
     console.error('Erro ao acessar página de configuração:', error);
     res.status(500).send('Erro ao carregar página de configuração. Por favor, tente novamente.');
@@ -1751,29 +1739,45 @@ app.use((err, req, res, next) => {
 // Tratamento de erro 500
 app.use((err, req, res, next) => {
   console.error('Erro interno do servidor:', err);
-  res.status(500).sendFile(path.join(__dirname, 'public', '500.html'));
+  
+  // Lista de possíveis caminhos para o arquivo 500.html
+  const possiblePaths = [
+    path.join(__dirname, 'public', '500.html'),
+    path.join('/var/www/whatsgpt/whatsgpt/public', '500.html'),
+    path.join('/var/www/whatsgpt/public', '500.html')
+  ];
+  
+  // Tentar encontrar o arquivo em um dos caminhos
+  for (const filePath of possiblePaths) {
+    if (fs.existsSync(filePath)) {
+      return res.status(500).sendFile(filePath);
+    }
+  }
+  
+  // Se não encontrar o arquivo, enviar resposta de erro padrão
+  res.status(500).send('Erro interno do servidor. Por favor, tente novamente mais tarde.');
 });
 
 // Função para inicializar o cliente WhatsApp
 async function initializeClient() {
-    console.log('Inicializando cliente WhatsApp...');
+  console.log('Inicializando cliente WhatsApp...');
+  
+  try {
+    // Verificar se o cliente já está sendo inicializado
+    if (global.isWhatsAppInitializing) {
+      console.log('Cliente WhatsApp já está sendo inicializado. Ignorando chamada duplicada.');
+      return;
+    }
     
-    try {
-        // Verificar se o cliente já está sendo inicializado
-        if (global.isWhatsAppInitializing) {
-            console.log('Cliente WhatsApp já está sendo inicializado. Ignorando chamada duplicada.');
-            return;
-        }
-        
-        // Definir flag para evitar inicializações duplicadas
-        global.isWhatsAppInitializing = true;
-        
-        // Limpar tentativas anteriores de reconexão
-        if (global.reconnectTimeout) {
-            clearTimeout(global.reconnectTimeout);
-            global.reconnectTimeout = null;
-        }
-        
+    // Definir flag para evitar inicializações duplicadas
+    global.isWhatsAppInitializing = true;
+    
+    // Limpar tentativas anteriores de reconexão
+    if (global.reconnectTimeout) {
+      clearTimeout(global.reconnectTimeout);
+      global.reconnectTimeout = null;
+    }
+    
         // Limpar sessão antes de inicializar
         await cleanupWhatsAppSession();
         
@@ -1781,16 +1785,16 @@ async function initializeClient() {
         await new Promise(resolve => setTimeout(resolve, 5000));
         
         // Inicializar o cliente
-        console.log('Chamando client.initialize()...');
+            console.log('Chamando client.initialize()...');
         await client.initialize();
         console.log('Cliente inicializado com sucesso');
         
         // Resetar flag após inicialização bem-sucedida
-        global.isWhatsAppInitializing = false;
+              global.isWhatsAppInitializing = false;
         
     } catch (error) {
         console.error('Erro ao inicializar cliente:', error);
-        global.isWhatsAppInitializing = false;
+          global.isWhatsAppInitializing = false;
         
         // Tentar novamente após 10 segundos
         global.reconnectTimeout = setTimeout(() => {
@@ -1876,7 +1880,7 @@ async function loadActiveConfiguration(userId) {
         return global.activeConfig;
       }
     }
-  } catch (error) {
+      } catch (error) {
     console.error('Erro ao carregar configuração ativa:', error);
     return null;
   }
@@ -1960,7 +1964,7 @@ async function limparSessao() {
       clearInterval(global.qrCodeInterval);
       global.qrCodeInterval = null;
     }
-    global.isWhatsAppInitializing = false;
+        global.isWhatsAppInitializing = false;
     if (global.reconnectTimeout) {
       clearTimeout(global.reconnectTimeout);
       global.reconnectTimeout = null;
@@ -2066,41 +2070,41 @@ async function cleanupWhatsAppSession() {
 }
 
 // Configurar eventos do cliente
-client.on('qr', (qr) => {
-    console.log('QR Code recebido, gerando imagem...');
-    global.qrCode = qr;
-    
-    // Limpar qualquer QR code anterior
-    if (global.qrCodeInterval) {
+    client.on('qr', (qr) => {
+      console.log('QR Code recebido, gerando imagem...');
+      global.qrCode = qr;
+      
+      // Limpar qualquer QR code anterior
+      if (global.qrCodeInterval) {
         clearInterval(global.qrCodeInterval);
         global.qrCodeInterval = null;
-    }
-    
-    // Gerar imagem do QR code em base64 antes de enviar
-    qrcode.toDataURL(qr, (err, dataUrl) => {
+      }
+      
+      // Gerar imagem do QR code em base64 antes de enviar
+      qrcode.toDataURL(qr, (err, dataUrl) => {
         if (err) {
-            console.error('Erro ao gerar imagem do QR code:', err);
-            return;
+          console.error('Erro ao gerar imagem do QR code:', err);
+          return;
         }
         
         // Emitir evento de QR code para atualização na interface
         io.emit('qrcode', dataUrl);
         console.log('QR code enviado para cliente');
+      });
     });
-});
-
-client.on('ready', async () => {
-    try {
+    
+    client.on('ready', async () => {
+      try {
         console.log('✅ Cliente WhatsApp está pronto!');
-        const phoneNumber = client.info.wid.user;
+          const phoneNumber = client.info.wid.user;
         console.log('Número de telefone obtido do WhatsApp:', phoneNumber);
-        
+          
         // Armazenar o número globalmente
-        global.currentWhatsAppPhoneNumber = phoneNumber;
-        
+          global.currentWhatsAppPhoneNumber = phoneNumber;
+          
         // Criar ou buscar usuário do WhatsApp
         console.log('Criando ou buscando usuário do WhatsApp...');
-        const whatsappUser = await findOrCreateWhatsAppUser(phoneNumber);
+          const whatsappUser = await findOrCreateWhatsAppUser(phoneNumber);
         console.log('Usuário WhatsApp criado/encontrado:', whatsappUser.id);
         
         // Inicializar banco de dados do usuário
@@ -2119,9 +2123,9 @@ client.on('ready', async () => {
         }
         
         // Emitir evento de status para o frontend com URL de redirecionamento
-        io.emit('whatsapp-status', {
-            status: 'connected',
-            message: 'WhatsApp conectado com sucesso!',
+            io.emit('whatsapp-status', { 
+              status: 'connected', 
+              message: 'WhatsApp conectado com sucesso!',
             phoneNumber: phoneNumber,
             redirectUrl: `/config?phone=${phoneNumber}`
         });
@@ -2132,14 +2136,14 @@ client.on('ready', async () => {
             clearInterval(global.qrCodeInterval);
             global.qrCodeInterval = null;
         }
-    } catch (error) {
+      } catch (error) {
         console.error('Erro ao processar evento ready:', error);
-    }
-});
-
+      }
+    });
+    
 client.on('authenticated', async () => {
     try {
-        console.log('✅ Autenticado no WhatsApp!');
+      console.log('✅ Autenticado no WhatsApp!');
         
         // Aguardar um momento para garantir que client.info esteja disponível
         await new Promise(resolve => setTimeout(resolve, 1000));
@@ -2172,11 +2176,11 @@ client.on('authenticated', async () => {
         });
         
         // Limpar o QR code quando autenticado
-        global.qrCode = null;
-        if (global.qrCodeInterval) {
-            clearInterval(global.qrCodeInterval);
-            global.qrCodeInterval = null;
-        }
+      global.qrCode = null;
+      if (global.qrCodeInterval) {
+        clearInterval(global.qrCodeInterval);
+        global.qrCodeInterval = null;
+      }
     } catch (error) {
         console.error('Erro ao processar autenticação:', error);
     }
@@ -2230,7 +2234,7 @@ client.on('disconnected', async (reason) => {
     }
 });
 
-client.on('message', async (message) => {
+    client.on('message', async (message) => {
     try {
         console.log('Mensagem recebida:', message.body);
         
@@ -2252,7 +2256,7 @@ client.on('message', async (message) => {
         if (!botPhoneNumber) {
             console.error('Número do WhatsApp do bot não encontrado');
             await message.reply('Desculpe, ocorreu um erro de configuração. Por favor, aguarde um momento.');
-            return;
+          return;
         }
         
         console.log(`Acessando banco de dados do bot com número: ${botPhoneNumber}`);
@@ -2302,13 +2306,13 @@ client.on('message', async (message) => {
                         fullPrompt += '\n\nInformações adicionais das URLs:\n';
                         for (const url of urls) {
                             fullPrompt += `\n${url}`;
-                        }
-                    }
-                } catch (urlError) {
-                    console.error('Erro ao processar URLs:', urlError);
-                }
+              }
             }
-
+          } catch (urlError) {
+            console.error('Erro ao processar URLs:', urlError);
+          }
+        }
+        
             // Adicionar informações adicionais se existirem
             if (userConfig.additional_info) {
                 console.log('Adicionando informações adicionais ao prompt...');
@@ -2360,7 +2364,7 @@ client.on('message', async (message) => {
             await message.reply('Desculpe, ocorreu um erro ao processar sua mensagem. Por favor, tente novamente mais tarde.');
         }
         
-    } catch (error) {
+  } catch (error) {
         console.error('Erro ao processar mensagem:', error);
         try {
             await message.reply('Desculpe, ocorreu um erro ao processar sua mensagem. Por favor, tente novamente mais tarde.');
@@ -2368,4 +2372,4 @@ client.on('message', async (message) => {
             console.error('Erro ao enviar mensagem de erro:', replyError);
         }
     }
-});
+}); 
