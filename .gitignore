@@ -18,10 +18,7 @@ yarn-error.log*
 
 # Arquivos de sessão do WhatsApp
 .wwebjs_auth/
-.wwebjs_auth_teste/
-.wwebjs_auth_novo/
-.wwebjs_auth_simples/
-chrome-data/
+.wwebjs_cache/
 
 # Diretório de uploads
 uploads/

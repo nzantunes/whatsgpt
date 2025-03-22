@@ -1,151 +1,191 @@
-const { Client } = require('whatsapp-web.js');
+const { Client, LocalAuth } = require('whatsapp-web.js');
 const qrcode = require('qrcode-terminal');
 const { OpenAI } = require('openai');
 require('dotenv').config(); // Carrega variáveis de ambiente do arquivo .env
 
-// Cria uma nova instância do cliente
-const client = new Client();
+// Configuração padrão
+const defaultConfig = {
+    prompt: "Você é um assistente útil e amigável. Responda em português do Brasil.",
+    model: "gpt-3.5-turbo"
+};
+
+// Cria uma nova instância do cliente com configurações adequadas
+const client = new Client({
+    puppeteer: {
+        headless: false,
+        executablePath: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+        args: [
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-dev-shm-usage',
+            '--disable-gpu',
+            '--window-size=1920,1080'
+        ],
+        defaultViewport: null
+    },
+    authStrategy: new LocalAuth({
+        clientId: 'whatsgpt-client',
+        dataPath: './.wwebjs_auth'
+    }),
+    restartOnAuthFail: true,
+    qrMaxRetries: 5,
+    qrTimeoutMs: 60000
+});
 
 // Configura o cliente OpenAI
 const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY, // Usa a chave API da variável de ambiente
+    apiKey: process.env.OPENAI_API_KEY,
 });
 
 // Quando o cliente estiver pronto
-client.on('ready', () => {
-    console.log('Cliente está pronto!');
+client.on('ready', async () => {
+    console.log('✅ Cliente WhatsApp está pronto e conectado!');
+    // Envia uma mensagem de teste para confirmar que está funcionando
+    await sendTestMessage();
 });
+
+// Função para enviar mensagem de teste
+async function sendTestMessage() {
+    try {
+        const chats = await client.getChats();
+        console.log(`📱 Número de chats disponíveis: ${chats.length}`);
+        
+        // Envia mensagem de teste para o último chat
+        if (chats.length > 0) {
+            const lastChat = chats[0];
+            console.log('📤 Enviando mensagem de teste para:', lastChat.id.user);
+            await lastChat.sendMessage('Bot iniciado e pronto para responder! 🤖');
+            console.log('✅ Mensagem de teste enviada com sucesso!');
+        }
+    } catch (error) {
+        console.error('❌ Erro ao enviar mensagem de teste:', error);
+    }
+}
 
 // Quando o cliente receber o QR Code
 client.on('qr', (qr) => {
+    console.log('📱 Novo QR Code recebido. Por favor, escaneie:');
     qrcode.generate(qr, { small: true });
+});
+
+// Quando o cliente for autenticado
+client.on('authenticated', (session) => {
+    console.log('🔐 Cliente autenticado com sucesso!');
+    console.log('📱 Detalhes da sessão:', JSON.stringify(session, null, 2));
+});
+
+// Quando houver falha na autenticação
+client.on('auth_failure', (msg) => {
+    console.error('❌ Falha na autenticação:', msg);
+});
+
+// Quando o cliente for desconectado
+client.on('disconnected', (reason) => {
+    console.log('📴 Cliente desconectado:', reason);
 });
 
 // Função para obter resposta do GPT
 async function obterRespostaGPT(mensagem) {
     try {
-        console.log('Iniciando obterRespostaGPT para mensagem:', mensagem.substring(0, 30) + '...');
-        
-        // Tenta obter a configuração do usuário de WhatsApp atual
-        const userId = global.currentWhatsAppUserId;
-        console.log('ID do usuário WhatsApp atual:', userId);
-        
-        let promptSistema = "Você é um assistente útil e amigável.";
-        let modelo = "gpt-3.5-turbo";
-        
-        // Verificar se existem configurações do bot para este usuário
-        if (global.userBotConfigs && global.userBotConfigs[userId]) {
-            const userConfig = global.userBotConfigs[userId];
-            console.log(`Usando configuração personalizada para usuário ID: ${userId}`);
-            
-            // Usar o prompt personalizado se disponível
-            if (userConfig.prompt && userConfig.prompt.trim() !== '') {
-                promptSistema = userConfig.prompt;
-                console.log(`Usando prompt personalizado: ${promptSistema.substring(0, 30)}...`);
-            }
-            
-            // Usar o modelo configurado
-            if (userConfig.model) {
-                modelo = userConfig.model;
-                console.log(`Usando modelo configurado: ${modelo}`);
-            }
-        } else if (global.botConfig && global.botConfig.prompt) {
-            // Usar configuração global se não houver configuração específica para o usuário
-            promptSistema = global.botConfig.prompt;
-            console.log(`Usando configuração global do bot: ${promptSistema.substring(0, 30)}...`);
-            
-            if (global.botConfig.model) {
-                modelo = global.botConfig.model;
-                console.log(`Usando modelo global configurado: ${modelo}`);
-            }
-        } else {
-            console.log('Nenhuma configuração encontrada, usando padrão');
-        }
-        
-        console.log(`Enviando mensagem para OpenAI (modelo: ${modelo})`);
-        console.log('Chave API OpenAI disponível:', !!process.env.OPENAI_API_KEY);
+        console.log('🤖 Gerando resposta para:', mensagem);
         
         if (!process.env.OPENAI_API_KEY) {
-            throw new Error('Chave API OpenAI não encontrada! Verifique o arquivo .env');
+            throw new Error('Chave API OpenAI não encontrada!');
         }
-        
-        // Verificar a instância do OpenAI antes de chamar
-        if (!openai || !openai.chat || !openai.chat.completions) {
-            console.error('Objeto OpenAI inválido ou não inicializado corretamente', openai);
-            throw new Error('Cliente OpenAI não está inicializado corretamente');
-        }
-        
-        // Log para mostrar mensagem completa sendo enviada
-        console.log('Mensagem para OpenAI:');
-        console.log('- System prompt:', promptSistema.substring(0, 100) + (promptSistema.length > 100 ? '...' : ''));
-        console.log('- User message:', mensagem.substring(0, 100) + (mensagem.length > 100 ? '...' : ''));
-        
-        const resposta = await openai.chat.completions.create({
-            model: modelo,
+
+        const completion = await openai.chat.completions.create({
+            model: defaultConfig.model,
             messages: [
-                { role: "system", content: promptSistema },
+                { role: "system", content: defaultConfig.prompt },
                 { role: "user", content: mensagem }
             ],
             max_tokens: 500,
         });
-        
-        console.log('Resposta recebida da OpenAI:', !!resposta);
-        
-        if (!resposta || !resposta.choices || !resposta.choices[0] || !resposta.choices[0].message) {
-            console.error('Resposta da OpenAI inválida:', resposta);
-            throw new Error('Resposta da OpenAI inválida ou vazia');
+
+        if (!completion.choices?.[0]?.message?.content) {
+            throw new Error('Resposta inválida da OpenAI');
         }
-        
-        console.log('Conteúdo da resposta:', resposta.choices[0].message.content.substring(0, 50) + '...');
-        return resposta.choices[0].message.content;
+
+        const resposta = completion.choices[0].message.content;
+        console.log('✨ Resposta gerada:', resposta);
+        return resposta;
     } catch (erro) {
-        console.error('Erro ao obter resposta do GPT:', erro);
-        console.error('Detalhes do erro:', erro.stack);
-        
-        // Verificar se o erro é relacionado à API key
-        if (erro.message && erro.message.includes('API key')) {
-            console.error('ERRO DE CHAVE API: Verifique se sua chave API OpenAI está correta no arquivo .env');
-            return "Desculpe, houve um problema com a configuração da API. Por favor, contate o administrador do sistema para verificar a chave API da OpenAI.";
-        }
-        
+        console.error('❌ Erro ao gerar resposta:', erro);
         return "Desculpe, tive um problema ao processar sua mensagem. Pode tentar novamente?";
+    }
+}
+
+// Função para enviar mensagem
+async function enviarMensagem(to, message) {
+    try {
+        console.log(`📤 Tentando enviar mensagem para ${to}...`);
+        const chat = await client.getChatById(to);
+        await chat.sendMessage(message);
+        console.log('✅ Mensagem enviada com sucesso!');
+        return true;
+    } catch (error) {
+        console.error('❌ Erro ao enviar mensagem:', error);
+        return false;
     }
 }
 
 // Quando uma mensagem for recebida
 client.on('message', async message => {
-    console.log('Mensagem recebida:', message.body);
-    
-    // Ignora mensagens do próprio bot para evitar loops
-    if (message.fromMe) return;
-    
     try {
-        console.log('Processando mensagem de WhatsApp...');
-        console.log('Status das configurações:');
-        console.log('- botConfig global disponível:', !!global.botConfig);
-        console.log('- userBotConfigs disponível:', !!global.userBotConfigs);
+        // Log detalhado da mensagem recebida
+        console.log('\n📩 Nova mensagem recebida:');
+        console.log('- De:', message.from);
+        console.log('- Conteúdo:', message.body);
+        console.log('- Tipo:', message.type);
         
-        if (global.userBotConfigs && global.currentWhatsAppUserId) {
-            console.log('- Configuração do usuário atual disponível:', !!global.userBotConfigs[global.currentWhatsAppUserId]);
+        // Ignora mensagens do próprio bot
+        if (message.fromMe) {
+            console.log('🤖 Mensagem é do próprio bot, ignorando...');
+            return;
+        }
+
+        // Gera a resposta
+        console.log('🤖 Processando mensagem...');
+        const resposta = await obterRespostaGPT(message.body);
+        
+        // Tenta enviar a resposta de duas formas
+        console.log('📤 Tentando enviar resposta...');
+        let enviado = await enviarMensagem(message.from, resposta);
+        
+        if (!enviado) {
+            console.log('⚠️ Tentando enviar resposta usando método alternativo...');
+            enviado = await message.reply(resposta);
         }
         
-        // Obtém resposta do GPT
-        const resposta = await obterRespostaGPT(message.body);
-        console.log('Resposta obtida do GPT:', resposta?.substring(0, 50) + '...');
-        
-        // Envia a resposta
-        await message.reply(resposta);
-        console.log('Resposta enviada com sucesso!');
+        if (enviado) {
+            console.log('✅ Resposta enviada com sucesso!');
+        } else {
+            throw new Error('Não foi possível enviar a resposta');
+        }
     } catch (erro) {
-        console.error('Erro ao processar mensagem:', erro);
+        console.error('❌ Erro ao processar mensagem:', erro);
         try {
-            // Tenta enviar uma mensagem de erro para o usuário
             await message.reply('Desculpe, ocorreu um erro ao processar sua mensagem. Por favor, tente novamente mais tarde.');
         } catch (replyError) {
-            console.error('Erro ao enviar mensagem de erro:', replyError);
+            console.error('❌ Erro ao enviar mensagem de erro:', replyError);
         }
     }
 });
 
+// Evento para mensagens enviadas (debug)
+client.on('message_create', (msg) => {
+    if (msg.fromMe) {
+        console.log('📤 Mensagem enviada:', msg.body);
+    }
+});
+
+// Evento para mensagens recebidas (debug)
+client.on('message_received', (msg) => {
+    console.log('📩 Mensagem recebida (evento raw):', msg.body);
+});
+
 // Inicializa o cliente
-client.initialize(); 
+console.log('🚀 Inicializando cliente WhatsApp...');
+client.initialize().catch(error => {
+    console.error('❌ Erro ao inicializar cliente:', error);
+}); 

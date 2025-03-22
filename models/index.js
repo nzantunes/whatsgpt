@@ -1,6 +1,6 @@
 // Exportar todos os modelos de uma vez
 const { User, findUserByEmail, findUserByWhatsAppNumber, addOrUpdateWhatsAppUser, addUser } = require('./User');
-const BotConfig = require('./botconfig');
+const BotConfig = require('./BotConfig');
 const Conversation = require('./Conversation');
 const EmailConfig = require('./EmailConfig');
 const { QRCodeSession, findSessionById, createSession, updateSessionQRCode, updateSessionStatus } = require('./qrcodeSession');

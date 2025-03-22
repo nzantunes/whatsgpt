@@ -4,69 +4,61 @@
 
 const fs = require('fs');
 const path = require('path');
-const { exec } = require('child_process');
+const { execSync } = require('child_process');
 
-// Função para excluir uma pasta recursivamente
-function deleteFolderRecursive(folderPath) {
-  if (fs.existsSync(folderPath)) {
-    fs.readdirSync(folderPath).forEach((file) => {
-      const curPath = path.join(folderPath, file);
-      if (fs.lstatSync(curPath).isDirectory()) {
-        // Se for diretório, chama a função recursivamente
-        deleteFolderRecursive(curPath);
-      } else {
-        // Se for arquivo, exclui
-        fs.unlinkSync(curPath);
-      }
-    });
-    // Depois de excluir todo o conteúdo, exclui o diretório vazio
-    fs.rmdirSync(folderPath);
-    console.log(`Diretório excluído: ${folderPath}`);
-  }
-}
-
-// Função para matar processos Node.js
-function killNodeProcesses() {
-  return new Promise((resolve, reject) => {
-    const isWindows = process.platform === 'win32';
-    const command = isWindows ? 'taskkill /F /IM node.exe /T' : 'pkill -f node';
-    
-    console.log('Encerrando processos Node.js...');
-    exec(command, (error, stdout, stderr) => {
-      if (error && !stderr.includes('não foi encontrado')) {
-        console.error(`Erro ao encerrar processos: ${error.message}`);
-        reject(error);
-        return;
-      }
-      console.log('Processos Node.js encerrados com sucesso');
-      resolve();
-    });
-  });
-}
-
-// Função principal
-async function main() {
+async function forceDelete(dir) {
   try {
-    console.log('Iniciando limpeza da sessão WhatsApp...');
-    
-    // Limpar diretórios de cache do WhatsApp
-    const diretoriosParaLimpar = [
-      '.wwebjs_auth',
-      '.wwebjs_cache'
-    ];
-    
-    diretoriosParaLimpar.forEach(dir => {
-      console.log(`Limpando diretório: ${dir}`);
-      deleteFolderRecursive(dir);
-    });
-    
-    console.log('Limpeza concluída com sucesso!');
-    console.log('Para iniciar o servidor novamente, execute: node index.js');
-    
+    // No Windows, tenta usar o comando rd para forçar a remoção
+    if (process.platform === 'win32') {
+      execSync(`rd /s /q "${dir}"`, { stdio: 'ignore' });
+    } else {
+      execSync(`rm -rf "${dir}"`, { stdio: 'ignore' });
+    }
+    console.log(`✅ Pasta ${dir} removida com sucesso`);
   } catch (error) {
-    console.error('Erro durante a limpeza:', error);
+    console.error(`❌ Erro ao remover pasta ${dir}:`, error.message);
   }
 }
 
-// Executar função principal
-main().catch(console.error); 
+async function limparSessao() {
+  console.log('Iniciando limpeza das pastas do WhatsApp Web...');
+  
+  // Primeiro, vamos tentar matar qualquer processo do Chrome que possa estar rodando
+  try {
+    if (process.platform === 'win32') {
+      execSync('taskkill /F /IM chrome.exe /T', { stdio: 'ignore' });
+    } else {
+      execSync('pkill -f chrome', { stdio: 'ignore' });
+    }
+    console.log('✅ Processos do Chrome encerrados');
+  } catch (error) {
+    // Ignora erro se não houver processos para matar
+  }
+
+  const pastas = [
+    '.wwebjs_auth',
+    '.wwebjs_cache',
+    'session',
+    'tmp'
+  ];
+
+  for (const pasta of pastas) {
+    const caminho = path.join(__dirname, pasta);
+    if (fs.existsSync(caminho)) {
+      await forceDelete(caminho);
+      // Aguardar um momento para garantir que o sistema liberou os arquivos
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    } else {
+      console.log(`ℹ️ Pasta ${pasta} não encontrada`);
+    }
+  }
+
+  console.log('✅ Limpeza concluída!');
+}
+
+// Executar limpeza
+limparSessao().then(() => {
+  console.log('Processo de limpeza finalizado. Você pode iniciar o servidor novamente.');
+}).catch(error => {
+  console.error('Erro durante a limpeza:', error);
+}); 

@@ -1,29 +1,28 @@
 # WhatsGPT
 
-Um bot de WhatsApp integrado com GPT que permite responder mensagens automaticamente usando configurações personalizadas.
+WhatsGPT é uma aplicação que integra o WhatsApp com a API do OpenAI (ChatGPT), permitindo que os usuários criem chatbots personalizados que respondem às mensagens do WhatsApp utilizando inteligência artificial.
 
 ## Funcionalidades
 
-- Integração com WhatsApp Web usando whatsapp-web.js
-- Integração com OpenAI GPT para processamento de mensagens
-- Interface web para configuração do bot
-- Suporte a múltiplas configurações por usuário
-- Upload e processamento de arquivos (PDF, Excel, CSV)
-- Histórico de conversas
-- Sistema de autenticação via QR Code
+- **Integração WhatsApp**: Conecte-se ao WhatsApp via QR Code
+- **Personalização**: Configure prompts personalizados para cada bot
+- **Contexto Adicional**: Adicione URLs para que o bot tenha informações contextuais para responder às perguntas
+- **Integração de Dados**: Carregue arquivos PDF, Excel e CSV para enriquecer as respostas
+- **Múltiplas Configurações**: Crie e gerencie diferentes perfis de bots para diversos casos de uso
 
 ## Requisitos
 
-- Node.js v18 ou superior
-- Chrome instalado
-- Conta no WhatsApp
-- Chave API da OpenAI
+- Node.js (v14 ou superior)
+- NPM ou Yarn
+- SQLite (incluso nas dependências)
+- Chave de API da OpenAI
+- Google Chrome ou Chromium (para o WhatsApp Web)
 
 ## Instalação
 
 1. Clone o repositório:
 ```bash
-git clone https://github.com/seu-usuario/whatsgpt.git
+git clone https://github.com/SEU_USUARIO/whatsgpt.git
 cd whatsgpt
 ```
 
@@ -32,10 +31,9 @@ cd whatsgpt
 npm install
 ```
 
-3. Crie um arquivo `.env` na raiz do projeto com as seguintes variáveis:
-```env
-OPENAI_API_KEY=sua_chave_api_aqui
-SESSION_SECRET=seu_segredo_aqui
+3. Crie um arquivo `.env` na raiz do projeto com o seguinte conteúdo:
+```
+OPENAI_API_KEY=sua_chave_api_da_openai
 PORT=3000
 ```
 
@@ -44,29 +42,28 @@ PORT=3000
 node index.js
 ```
 
-5. Acesse `http://localhost:3000` e escaneie o QR Code com seu WhatsApp.
-
-## Configuração
-
-1. Após escanear o QR Code, você será redirecionado para a página de configuração
-2. Crie uma nova configuração com:
-   - Nome da configuração
-   - Prompt personalizado
-   - Modelo GPT desejado
-   - URLs para contexto (opcional)
-   - Arquivos para contexto (opcional)
-
 ## Uso
 
-- Envie mensagens para o número do WhatsApp configurado
-- O bot responderá automaticamente usando o GPT com base nas configurações ativas
-- Todas as conversas são salvas no histórico
-- Você pode ter múltiplas configurações e alternar entre elas
+1. Acesse `http://localhost:3000` em seu navegador
+2. Escaneie o QR Code exibido com seu WhatsApp
+3. Configure seu bot na página de configuração
+4. Comece a receber e responder mensagens automaticamente!
 
-## Contribuição
+## Configurando seu Bot
 
-Sinta-se à vontade para contribuir com o projeto através de pull requests.
+1. Após conectar seu WhatsApp, acesse a página de configuração
+2. Crie uma nova configuração com um nome e um prompt personalizado
+3. Adicione URLs para contexto adicional (opcional)
+4. Carregue arquivos para enriquecer as respostas (opcional)
+5. Salve e ative sua configuração
+6. Teste enviando mensagens para o número conectado
+
+## Suporte
+
+Para suporte, entre em contato com:
+- Email: nzantunes1@gmail.com
+- WhatsApp: (47) 99109-7740
 
 ## Licença
 
-Este projeto está licenciado sob a licença MIT - veja o arquivo [LICENSE](LICENSE) para mais detalhes. 
+© 2025 WhatsGPT. Todos os direitos reservados a Nain Zahailo. 

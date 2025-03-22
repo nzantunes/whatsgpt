@@ -1,28 +1,22 @@
 #!/bin/bash
 
-# Parar processos existentes
-pkill -f "node index.js"
-pkill -f "chrome"
+# Script para atualizar o código no servidor
+cd /var/www/whatsgpt
 
-# Backup da pasta atual
-mv whatsgpt whatsgpt_backup_$(date +%Y%m%d)
+# Salvar alterações locais (se houver)
+git stash
 
-# Clonar nova versão
-git clone https://github.com/nzantunes/whatsgpt.git
+# Configurar git para usar https com credenciais embutidas
+# Substitua USERNAME e TOKEN pelos seus valores reais
+git remote set-url origin https://github.com/nzantunes/whatsgpt.git
 
-# Entrar na pasta
-cd whatsgpt
+# Fazer pull das alterações mais recentes
+git pull
 
-# Copiar arquivo .env do backup
-cp ../whatsgpt_backup_$(date +%Y%m%d)/.env .
+# Restaurar alterações locais (se necessário)
+# git stash pop
 
-# Copiar banco de dados
-cp -r ../whatsgpt_backup_$(date +%Y%m%d)/db/*.sqlite db/
-
-# Instalar dependências
-npm install
-
-# Iniciar servidor
-node index.js
+# Reiniciar o serviço Node.js (se estiver usando PM2)
+pm2 restart all
 
 echo "Atualização concluída!" 

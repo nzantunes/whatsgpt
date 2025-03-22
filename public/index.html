@@ -26,27 +26,50 @@
     }
 
     .navbar {
-      background-color: var(--secondary-color);
+      background-color: #f8f9fa !important;
       padding: 15px 0;
-      box-shadow: var(--box-shadow);
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
     }
 
     .navbar-brand {
       font-weight: 700;
       font-size: 24px;
-      color: white;
-        }
+      color: #3498db !important;
+    }
+
+    .navbar-brand i {
+      margin-right: 8px;
+      color: #3498db;
+    }
 
     .navbar-nav .nav-link {
-      color: rgba(255, 255, 255, 0.85);
+      color: #555 !important;
       font-weight: 500;
       padding: 0.5rem 1rem;
       transition: color 0.3s;
     }
 
     .navbar-nav .nav-link:hover {
-      color: white;
+      color: var(--primary-color) !important;
         }
+
+    @keyframes neon {
+      0% {
+        box-shadow: 0 0 5px var(--primary-color),
+                    0 0 10px var(--primary-color),
+                    0 0 15px var(--primary-color);
+      }
+      50% {
+        box-shadow: 0 0 10px var(--primary-color),
+                    0 0 20px var(--primary-color),
+                    0 0 30px var(--primary-color);
+      }
+      100% {
+        box-shadow: 0 0 5px var(--primary-color),
+                    0 0 10px var(--primary-color),
+                    0 0 15px var(--primary-color);
+      }
+    }
 
     .hero {
       padding: 100px 0 120px;
@@ -92,22 +115,33 @@
       text-decoration: none;
       display: inline-block;
       margin: 10px;
+      position: relative;
+      overflow: hidden;
+      animation: neon 2s infinite;
     }
 
     .hero-btn:hover {
-      background-color: transparent;
-      color: white;
+      transform: translateY(-2px);
+      animation: none;
+      box-shadow: 0 0 20px var(--primary-color),
+                  0 0 40px var(--primary-color),
+                  0 0 60px var(--primary-color);
     }
 
     .hero-btn-outline {
       background-color: transparent;
       color: white;
       border: 2px solid white;
+      animation: neon 2s infinite;
     }
 
     .hero-btn-outline:hover {
       background-color: white;
       color: var(--secondary-color);
+      animation: none;
+      box-shadow: 0 0 20px white,
+                  0 0 40px white,
+                  0 0 60px white;
     }
 
     .section {
@@ -347,25 +381,24 @@
 </head>
 <body>
   <!-- Navbar -->
-  <nav class="navbar navbar-expand-lg">
+  <nav class="navbar navbar-expand-lg navbar-light bg-light">
     <div class="container">
-      <a class="navbar-brand" href="#"><i class="bi bi-robot me-2"></i>WhatsGPT</a>
-      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+      <a class="navbar-brand" href="#"><i class="bi bi-robot"></i>WhatsGPT</a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
         <span class="navbar-toggler-icon"></span>
       </button>
       <div class="collapse navbar-collapse" id="navbarNav">
-        <ul class="navbar-nav ms-auto">
+        <ul class="navbar-nav">
           <li class="nav-item">
-            <a class="nav-link active" href="#">Início</a>
+            <a class="nav-link" href="#sobre">Sobre a Aplicação</a>
           </li>
           <li class="nav-item">
-            <a class="nav-link" href="#features">Recursos</a>
+            <a class="nav-link" href="#contato">Contato</a>
           </li>
           <li class="nav-item">
-            <a class="nav-link" href="#how-it-works">Como Funciona</a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link" href="#testimonials">Depoimentos</a>
+            <a class="nav-link" href="https://wa.me/47991097740" target="_blank">
+              <i class="bi bi-whatsapp"></i> (47) 99109-7740
+            </a>
           </li>
         </ul>
       </div>
@@ -377,8 +410,8 @@
         <div class="container">
       <div class="row justify-content-center">
         <div class="col-lg-8 text-center">
-          <h1>Acesse a IA através do seu WhatsApp</h1>
-          <p>Configure seu assistente inteligente e use o poder do ChatGPT diretamente no WhatsApp, sem necessidade de instalar aplicativos</p>
+          <h1>O poder da IA no WhatsGPT</h1>
+          <h2>Configure seu assistente inteligente e use o poder do WhatsGPT diretamente no WhatsApp, sem necessidade de instalar aplicativos</p>
           <a href="/qrcode" class="hero-btn">
             <i class="bi bi-whatsapp me-2"></i>Conectar com WhatsApp
           </a>
@@ -390,11 +423,111 @@
     </div>
   </section>
 
+  <!-- Seção Sobre a Aplicação -->
+  <section id="sobre" class="py-5 bg-light">
+    <div class="container">
+      <h2 class="text-center mb-5">Sobre a Aplicação</h2>
+      
+      <div class="row g-4">
+        <div class="col-md-6">
+          <div class="card h-100 border-0 shadow-sm">
+            <div class="card-body">
+              <h4 class="card-title mb-4">Funcionalidades Principais</h4>
+              <ul class="list-unstyled">
+                <li class="mb-3">
+                  <i class="bi bi-robot text-primary"></i>
+                  <strong>Atendimento Automatizado:</strong> Responda mensagens 24/7 com inteligência artificial avançada
+                </li>
+                <li class="mb-3">
+                  <i class="bi bi-file-text text-primary"></i>
+                  <strong>Base de Conhecimento:</strong> Integre documentos PDF, Excel e CSV para respostas personalizadas
+                </li>
+                <li class="mb-3">
+                  <i class="bi bi-link-45deg text-primary"></i>
+                  <strong>Integração com URLs:</strong> Use conteúdo de sites como fonte de informação
+                </li>
+                <li class="mb-3">
+                  <i class="bi bi-gear text-primary"></i>
+                  <strong>Configuração Flexível:</strong> Personalize prompts e modelos de IA para cada necessidade
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+        
+        <div class="col-md-6">
+          <div class="card h-100 border-0 shadow-sm">
+            <div class="card-body">
+              <h4 class="card-title mb-4">Benefícios para seu Negócio</h4>
+              <ul class="list-unstyled">
+                <li class="mb-3">
+                  <i class="bi bi-shop text-success"></i>
+                  <strong>Comércio:</strong> Atendimento instantâneo para dúvidas sobre produtos e serviços
+                </li>
+                <li class="mb-3">
+                  <i class="bi bi-building text-success"></i>
+                  <strong>Empresas:</strong> Suporte técnico e SAC automatizado com respostas precisas
+                </li>
+                <li class="mb-3">
+                  <i class="bi bi-megaphone text-success"></i>
+                  <strong>Marketing:</strong> Engajamento constante com clientes e leads
+                </li>
+                <li class="mb-3">
+                  <i class="bi bi-graph-up text-success"></i>
+                  <strong>Vendas:</strong> Qualificação automática de leads e suporte à decisão de compra
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row mt-4">
+        <div class="col-12">
+          <div class="card border-0 shadow-sm">
+            <div class="card-body">
+              <h4 class="card-title mb-4">Por que escolher nossa solução?</h4>
+              <div class="row">
+                <div class="col-md-4 mb-3">
+                  <div class="d-flex align-items-center">
+                    <i class="bi bi-clock-history text-warning fs-4 me-2"></i>
+                    <div>
+                      <h5 class="mb-1">Economia de Tempo</h5>
+                      <p class="mb-0">Automatize respostas repetitivas e foque no que importa</p>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-4 mb-3">
+                  <div class="d-flex align-items-center">
+                    <i class="bi bi-currency-dollar text-warning fs-4 me-2"></i>
+                    <div>
+                      <h5 class="mb-1">Redução de Custos</h5>
+                      <p class="mb-0">Diminua custos operacionais com atendimento automatizado</p>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-4 mb-3">
+                  <div class="d-flex align-items-center">
+                    <i class="bi bi-stars text-warning fs-4 me-2"></i>
+                    <div>
+                      <h5 class="mb-1">Satisfação do Cliente</h5>
+                      <p class="mb-0">Respostas rápidas e precisas 24 horas por dia</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <!-- Features Section -->
   <section class="section" id="features">
   <div class="container">
       <div class="text-center mb-5">
-        <h2 class="section-title">Muito mais que ChatGPT</h2>
+        <h2 class="section-title">O poder da IA no WhatsGPT</h2>
         <p class="section-subtitle">Alimente seu bot com dados personalizados e utilize recursos avançados de IA</p>
       </div>
 
@@ -505,36 +638,59 @@
     </div>
   </section>
 
-  <!-- Testimonials Section -->
-  <section class="section" id="testimonials">
+  <!-- Seção de Depoimentos -->
+  <section id="depoimentos" class="py-5 bg-light">
     <div class="container">
-      <div class="text-center mb-5">
-        <h2 class="section-title">O que nossos usuários dizem</h2>
-        <p class="section-subtitle">Pessoas que já transformaram sua experiência com WhatsApp usando nossa solução</p>
+      <h2 class="text-center mb-5">Depoimentos de Empresas</h2>
+      <div class="row g-4">
+        <div class="col-md-4">
+          <div class="card h-100 border-0 shadow-sm">
+            <div class="card-body">
+              <div class="d-flex align-items-center mb-3">
+                <i class="bi bi-building text-primary fs-2 me-3"></i>
+                <div>
+                  <h5 class="card-title mb-0">Comércio Varejo</h5>
+                  <small class="text-muted">Loja de Roupas</small>
                 </div>
-
-      <div class="row">
-        <div class="col-lg-4">
-          <div class="testimonial-card">
-            <p class="testimonial-text">"O WhatsGPT transformou a maneira como trabalho. O recurso de transcrição de notas de voz é incrivelmente útil para organizar meus pensamentos e ideias."</p>
-            <div class="testimonial-author">Carlos M.</div>
-            <div class="testimonial-role">Desenvolvedor de Software</div>
+              </div>
+              <p class="card-text">
+                "O WhatsGPT revolucionou nosso atendimento ao cliente. Agora conseguimos responder dúvidas sobre produtos 24 horas por dia, aumentando significativamente nossas vendas online."
+              </p>
+            </div>
           </div>
         </div>
-
-        <div class="col-lg-4">
-          <div class="testimonial-card">
-            <p class="testimonial-text">"A integração perfeita do ChatGPT com o WhatsApp tornou ainda mais conveniente acessar as poderosas ferramentas de IA que uso diariamente."</p>
-            <div class="testimonial-author">Ana F.</div>
-            <div class="testimonial-role">Marketing Digital</div>
-          </div>
+        
+        <div class="col-md-4">
+          <div class="card h-100 border-0 shadow-sm">
+            <div class="card-body">
+              <div class="d-flex align-items-center mb-3">
+                <i class="bi bi-shop text-success fs-2 me-3"></i>
+                <div>
+                  <h5 class="card-title mb-0">Restaurante</h5>
+                  <small class="text-muted">Gastronomia</small>
+                </div>
+              </div>
+              <p class="card-text">
+                "Automatizamos reservas e pedidos via WhatsApp. O sistema responde cardápio, preços e disponibilidade instantaneamente. Nossa eficiência aumentou 80%."
+              </p>
             </div>
-
-        <div class="col-lg-4">
-          <div class="testimonial-card">
-            <p class="testimonial-text">"Adoro as imagens geradas por IA! É incrível como posso simplesmente descrever uma cena e o ChatGPT cria uma imagem única com base na minha descrição."</p>
-            <div class="testimonial-author">Marcos L.</div>
-            <div class="testimonial-role">Designer Gráfico</div>
+          </div>
+        </div>
+        
+        <div class="col-md-4">
+          <div class="card h-100 border-0 shadow-sm">
+            <div class="card-body">
+              <div class="d-flex align-items-center mb-3">
+                <i class="bi bi-briefcase text-warning fs-2 me-3"></i>
+                <div>
+                  <h5 class="card-title mb-0">Consultoria</h5>
+                  <small class="text-muted">Serviços Empresariais</small>
+                </div>
+              </div>
+              <p class="card-text">
+                "O assistente virtual nos ajuda com o primeiro atendimento aos clientes, qualificando leads e agendando reuniões. Otimizou muito nosso processo comercial."
+              </p>
+            </div>
           </div>
         </div>
       </div>
@@ -613,7 +769,22 @@
             const phoneNumber = urlParams.get('phone');
             
             if (phoneNumber) {
-        window.location.href = `/config?phone=${phoneNumber}`;
+                // Tentar verificar se há sessão antes de redirecionar
+                fetch('/api/check-auth')
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.authenticated) {
+                            window.location.href = `/config?phone=${phoneNumber}`;
+                        } else {
+                            // Se não estiver autenticado, autenticar primeiro
+                            window.location.href = `/login?redirect=config&phone=${phoneNumber}`;
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Erro ao verificar autenticação:', error);
+                        // Em caso de erro, tentar redirecionar normalmente
+                        window.location.href = `/config?phone=${phoneNumber}`;
+                    });
             }
         
       // Smooth scrolling para âncoras

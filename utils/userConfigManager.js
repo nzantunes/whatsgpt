@@ -173,41 +173,72 @@ async function listUserConfigs(phoneNumber) {
  * @returns {Promise<Object>} - Promessa com a configuração ativa do usuário
  */
 async function loadUserActiveConfig(phoneNumber) {
+  console.log(`Carregando configuração ativa para: ${phoneNumber}`);
+  
   try {
-    console.log(`Carregando configuração ativa para o número: ${phoneNumber}`);
+    // Garantir que o usuário existe
+    let whatsappUser = await WhatsAppUser.findOne({
+      where: { phone_number: phoneNumber }
+    });
     
-    if (!phoneNumber) {
-      console.error('Número de telefone não fornecido');
-      return null;
+    if (!whatsappUser) {
+      whatsappUser = await WhatsAppUser.create({
+        phone_number: phoneNumber,
+        name: `WhatsApp User ${phoneNumber}`,
+        last_interaction: new Date()
+      });
+      console.log(`Novo usuário WhatsApp criado: ${phoneNumber}`);
     }
-
+    
+    // Atualizar última interação
+    await whatsappUser.update({
+      last_interaction: new Date()
+    });
+    
     // Obter banco de dados específico do usuário
     const db = await getUserDatabase(phoneNumber);
     
     // Buscar configuração ativa
-    const activeConfig = await db.models.UserBotConfig.findOne({
+    let activeConfig = await db.models.UserBotConfig.findOne({
       where: { is_active: true }
     });
-
+    
     if (activeConfig) {
-      console.log(`Configuração ativa encontrada: ${activeConfig.name}`);
+      console.log(`Configuração ativa encontrada para ${phoneNumber}: ${activeConfig.name} (ID: ${activeConfig.id})`);
       return activeConfig;
     }
-
-    // Se não houver configuração ativa, criar uma padrão
-    console.log('Nenhuma configuração ativa encontrada, criando configuração padrão...');
+    
+    // Se não encontrou configuração ativa, buscar qualquer configuração existente
+    const anyConfig = await db.models.UserBotConfig.findOne();
+    
+    if (anyConfig) {
+      // Ativar a primeira configuração encontrada
+      await anyConfig.update({ is_active: true });
+      console.log(`Ativando configuração existente para ${phoneNumber}: ${anyConfig.name} (ID: ${anyConfig.id})`);
+      return anyConfig;
+    }
+    
+    // Se não encontrou nenhuma configuração, criar uma padrão
     const defaultConfig = await db.models.UserBotConfig.create({
       name: 'Configuração Padrão',
-      prompt: 'Você é um assistente virtual que responde perguntas de forma educada e concisa.',
+      prompt: 'Você é um assistente útil e amigável que ajuda a responder perguntas de forma clara e objetiva.',
       model: 'gpt-3.5-turbo',
-      is_active: true
+      is_active: true,
+      additional_info: '',
+      urls: '[]',
+      pdf_content: '',
+      xlsx_content: '',
+      csv_content: '',
+      pdf_filenames: '[]',
+      xlsx_filenames: '[]',
+      csv_filenames: '[]'
     });
-
-    console.log(`Configuração padrão criada com ID: ${defaultConfig.id}`);
+    
+    console.log(`Criada configuração padrão para ${phoneNumber} (ID: ${defaultConfig.id})`);
     return defaultConfig;
   } catch (error) {
-    console.error('Erro ao carregar configuração ativa:', error);
-    return null;
+    console.error(`Erro ao carregar configuração ativa para ${phoneNumber}:`, error);
+    throw error;
   }
 }
 

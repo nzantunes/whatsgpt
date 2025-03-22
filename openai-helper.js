@@ -1,88 +1,61 @@
 const { OpenAI } = require('openai');
+require('dotenv').config();
 
 // Função para criar um cliente OpenAI
 function createOpenAIClient() {
-  try {
-    if (!process.env.OPENAI_API_KEY) {
-      throw new Error('Chave API OpenAI não configurada');
-    }
-
-    return new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY
-    });
-  } catch (error) {
-    console.error('Erro ao criar cliente OpenAI:', error);
-    throw error;
-  }
+  return new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY
+  });
 }
 
-// Função para enviar uma mensagem para o GPT
-async function sendMessageToGPT(systemPrompt, userMessage, model = 'gpt-3.5-turbo', maxTokens = 500, conversationHistory = []) {
+// Função para limitar o tamanho do texto
+function limitTextSize(text, maxChars = 2000) {
+  if (!text) return '';
+  return text.length > maxChars ? text.substring(0, maxChars) + '...' : text;
+}
+
+/**
+ * Envia uma mensagem para o GPT usando a configuração específica
+ * @param {string} systemPrompt - O prompt do sistema (configuração do usuário)
+ * @param {string} userMessage - A mensagem do usuário
+ * @param {string} model - O modelo do GPT a ser usado
+ * @returns {Promise<string>} - A resposta do GPT
+ */
+async function sendMessageToGPT(systemPrompt, userMessage, model = 'gpt-3.5-turbo') {
   try {
-    console.log(`Iniciando chamada ao GPT com modelo: ${model}`);
-    console.log(`Mensagem do usuário: "${userMessage.substring(0, 50)}${userMessage.length > 50 ? '...' : ''}"`);
-    
+    console.log('Enviando mensagem para GPT...');
+    console.log('Modelo:', model);
+    console.log('Tamanho do prompt do sistema:', systemPrompt.length);
+    console.log('Tamanho da mensagem do usuário:', userMessage.length);
+
+    // Limitar tamanho das mensagens
+    const limitedSystemPrompt = limitTextSize(systemPrompt, 6000);
+    const limitedUserMessage = limitTextSize(userMessage, 2000);
+
+    console.log('Tamanho do prompt do sistema após limite:', limitedSystemPrompt.length);
+    console.log('Tamanho da mensagem do usuário após limite:', limitedUserMessage.length);
+
     const openai = createOpenAIClient();
-    
-    if (!openai) {
-      console.error('Cliente OpenAI não foi criado corretamente');
-      throw new Error('Falha ao criar cliente OpenAI');
+    const completion = await openai.chat.completions.create({
+      model: model,
+      messages: [
+        { role: "system", content: limitedSystemPrompt },
+        { role: "user", content: limitedUserMessage }
+      ],
+      max_tokens: 500,
+      temperature: 0.7
+    });
+
+    if (!completion.choices || !completion.choices[0] || !completion.choices[0].message) {
+      throw new Error('Resposta inválida da API do GPT');
     }
 
-    // Construir mensagens com o histórico se disponível
-    const messages = [
-      { role: 'system', content: systemPrompt }
-    ];
-
-    // Adicionar histórico de conversas se existir
-    if (conversationHistory && conversationHistory.length > 0) {
-      console.log(`Adicionando ${conversationHistory.length} mensagens de histórico`);
-      for (const entry of conversationHistory) {
-        if (entry.user) messages.push({ role: 'user', content: entry.user });
-        if (entry.assistant) messages.push({ role: 'assistant', content: entry.assistant });
-      }
-    }
-
-    // Adicionar a mensagem atual do usuário
-    messages.push({ role: 'user', content: userMessage });
-    
-    console.log(`Total de ${messages.length} mensagens na conversa`);
-    console.log(`Enviando requisição para API OpenAI com modelo ${model}...`);
-
-    try {
-      const completion = await openai.chat.completions.create({
-        model: model,
-        messages: messages,
-        max_tokens: maxTokens,
-        temperature: 0.7
-      });
-      
-      if (!completion || !completion.choices || completion.choices.length === 0 || !completion.choices[0].message) {
-        console.error('Resposta da API não possui o formato esperado:', completion);
-        throw new Error('Formato de resposta inválido da API OpenAI');
-      }
-      
-      const responseContent = completion.choices[0].message.content;
-      console.log(`Resposta recebida do GPT: "${responseContent.substring(0, 50)}${responseContent.length > 50 ? '...' : ''}"`);
-      
-      return responseContent;
-    } catch (apiError) {
-      console.error('Erro da API OpenAI:', apiError);
-      
-      // Verificar se é um erro relacionado à chave API
-      if (apiError.message && (apiError.message.includes('API key') || apiError.message.includes('authentication'))) {
-        throw new Error('Problema com a chave da API OpenAI. Verifique sua chave.');
-      }
-      
-      // Verificar erros de rede
-      if (apiError.message && apiError.message.includes('network')) {
-        throw new Error('Problema de conexão com a API OpenAI. Verifique sua internet.');
-      }
-      
-      throw apiError;
-    }
+    return completion.choices[0].message.content;
   } catch (error) {
     console.error('Erro ao enviar mensagem para GPT:', error);
+    if (error.status === 400 && error.message.includes('maximum context length')) {
+      return 'Desculpe, a mensagem é muito longa para ser processada. Por favor, tente uma mensagem mais curta.';
+    }
     throw error;
   }
 }
