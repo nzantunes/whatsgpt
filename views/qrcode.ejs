@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Conectar WhatsApp — WhatsGPT</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="app">
+    <header class="header">
+      <a href="/" class="logo">WhatsGPT</a>
+      <nav>
+        <% if (typeof phone !== 'undefined' && phone) { %><a href="/config">Configuração</a><% } %>
+        <a href="/qrcode">QR Code</a>
+        <a href="/logout">Sair</a>
+      </nav>
+    </header>
+    <main class="main">
+      <div class="card qrcode-card">
+        <h1>Conectar WhatsApp</h1>
+        <p><strong>Obrigatório:</strong> Quem criou conta ou fez login precisa escanear o QR Code aqui para vincular o número ao usuário no banco de dados. Sem isso, a página Configuração não fica disponível. A configuração do bot é salva por número.</p>
+        <p>Escaneie o QR Code com o WhatsApp no seu celular (WhatsApp → Dispositivos vinculados → Vincular dispositivo).</p>
+        <div id="qrcode-container">
+          <img id="qrcode-img" alt="QR Code" style="display: none;">
+          <canvas id="qrcode-canvas" style="display: none;"></canvas>
+          <p id="qrcode-wait">Gerando QR Code...</p>
+          <div id="qrcode-ready" style="display: none;">
+            <p id="qrcode-ready-msg">Conectado.</p>
+            <p id="qrcode-status-connected" class="status"></p>
+            <button type="button" id="btn-vincular" class="btn btn-primary">Vincular à minha conta</button>
+            <button type="button" id="btn-desconectar" class="btn btn-secondary" style="margin-left: 0.5em;">Desconectar e gerar novo QR</button>
+            <p id="qrcode-vincular-erro" class="qrcode-error" style="display: none; margin-top: 0.5em;"></p>
+          </div>
+          <div id="qrcode-error" class="qrcode-error" style="display: none;"></div>
+        </div>
+        <p id="qrcode-status" class="status"></p>
+      </div>
+    </main>
+  </div>
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+    const img = document.getElementById('qrcode-img');
+    const wait = document.getElementById('qrcode-wait');
+    const ready = document.getElementById('qrcode-ready');
+    const statusEl = document.getElementById('qrcode-status');
+    const statusConnected = document.getElementById('qrcode-status-connected');
+    const btnVincular = document.getElementById('btn-vincular');
+    const btnDesconectar = document.getElementById('btn-desconectar');
+    const vincularErro = document.getElementById('qrcode-vincular-erro');
+
+    function showConectado(msg, isSessaoSalva) {
+      wait.style.display = 'none';
+      document.getElementById('qrcode-error').style.display = 'none';
+      ready.style.display = 'block';
+      if (statusConnected) {
+        if (isSessaoSalva) {
+          statusConnected.innerHTML = (msg || '') + '<br><small>Conectado pela sessão salva (você não escaneou o QR agora). Use "Desconectar" para escanear outro número.</small>';
+        } else {
+          statusConnected.textContent = msg || '';
+        }
+      }
+      if (vincularErro) vincularErro.style.display = 'none';
+    }
+
+    function vincularConta() {
+      if (!btnVincular) return;
+      btnVincular.disabled = true;
+      if (vincularErro) vincularErro.style.display = 'none';
+      fetch('/api/set-phone', { method: 'POST', credentials: 'same-origin' })
+        .then(r => r.json())
+        .then((d) => {
+          btnVincular.disabled = false;
+          if (d.code === 'PHONE_TAKEN') {
+            if (vincularErro) { vincularErro.textContent = d.error || 'Este número já está vinculado a outra conta.'; vincularErro.style.display = 'block'; }
+            return;
+          }
+          if (d.ok) window.location.href = '/config';
+        })
+        .catch(function () { btnVincular.disabled = false; });
+    }
+
+    if (btnVincular) btnVincular.addEventListener('click', vincularConta);
+
+    socket.on('qrcode', (data) => {
+      const errEl = document.getElementById('qrcode-error');
+      if (data.error) {
+        wait.style.display = 'none';
+        errEl.style.display = 'block';
+        errEl.innerHTML = '<strong>Navegador não iniciou.</strong> ' + (data.message || '') +
+          '<br><br>Instale o Chromium e reinicie o app:<br>' +
+          '<code>sudo apt install chromium-browser</code><br><br>' +
+          'Ou defina no .env o caminho do Chrome/Chromium:<br>' +
+          '<code>CHROMIUM_PATH=/usr/bin/chromium</code>';
+        return;
+      }
+      errEl.style.display = 'none';
+      if (data.ready) {
+        wait.style.display = 'none';
+        document.getElementById('qrcode-error').style.display = 'none';
+        ready.style.display = 'block';
+        showConectado('Conectado. Vinculando…', false);
+        fetch('/api/set-phone', { method: 'POST', credentials: 'same-origin' })
+          .then(r => r.json())
+          .then((d) => {
+            if (d.code === 'PHONE_TAKEN') {
+              if (statusConnected) statusConnected.textContent = '';
+              if (vincularErro) { vincularErro.textContent = d.error || ''; vincularErro.style.display = 'block'; }
+              return;
+            }
+            if (d.ok) window.location.href = '/config';
+          })
+          .catch(function () { if (statusConnected) statusConnected.textContent = ''; });
+        return;
+      }
+      if (data.url) {
+        img.src = data.url;
+        img.style.display = 'block';
+        wait.style.display = 'none';
+      }
+    });
+
+    socket.on('connected', (data) => {
+      showConectado('Número: ' + (data.phone || '') + ' — Vinculando…', false);
+      fetch('/api/set-phone', { method: 'POST', credentials: 'same-origin' })
+        .then(r => r.json())
+        .then((d) => {
+          if (d.code === 'PHONE_TAKEN') {
+            showConectado('');
+            if (vincularErro) { vincularErro.textContent = d.error || ''; vincularErro.style.display = 'block'; }
+            return;
+          }
+          if (d.ok) window.location.href = '/config';
+        })
+        .catch(function () { showConectado(''); });
+    });
+
+    socket.on('auth_failure', () => { statusEl.textContent = 'Falha na autenticação.'; });
+    socket.on('disconnected', (d) => { statusEl.textContent = 'Desconectado: ' + (d.reason || ''); });
+
+    fetch('/api/qrcode-status')
+      .then(r => r.json())
+      .then((s) => {
+        if (s.browserError) {
+          wait.style.display = 'none';
+          const errEl = document.getElementById('qrcode-error');
+          errEl.style.display = 'block';
+          errEl.innerHTML = '<strong>Navegador não iniciou.</strong> ' + s.browserError +
+            '<br><br>Instale o Chromium e reinicie o app:<br>' +
+            '<code>sudo apt install chromium-browser</code><br><br>' +
+            'Ou defina no .env: <code>CHROMIUM_PATH=/usr/bin/chromium</code>';
+          return;
+        }
+        if (s.ready && s.phone) {
+          showConectado('Já conectado com o número ' + (s.phone || '') + ' (sessão salva).', true);
+          if (btnDesconectar) {
+            btnDesconectar.onclick = function () {
+              btnDesconectar.disabled = true;
+              fetch('/api/whatsapp-disconnect', { method: 'POST', credentials: 'same-origin' })
+                .then(function () { window.location.reload(); })
+                .catch(function () { btnDesconectar.disabled = false; });
+            };
+          }
+          return;
+        }
+      })
+      .catch(function () {
+        wait.style.display = 'none';
+        document.getElementById('qrcode-error').style.display = 'block';
+        document.getElementById('qrcode-error').innerHTML = 'Não foi possível conectar ao servidor. <strong>Use na barra de endereço:</strong> <code><%= typeof appUrl !== "undefined" ? appUrl : "http://localhost:3000" %></code>';
+      });
+  </script>
+</body>
+</html>

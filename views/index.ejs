@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>WhatsGPT — Assistente de IA no WhatsApp</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap" rel="stylesheet">
+  <style>
+    .landing { font-family: 'DM Sans', system-ui, sans-serif; }
+    .landing .hero {
+      text-align: center;
+      padding: 4rem 1.5rem 3rem;
+      max-width: 720px;
+      margin: 0 auto;
+    }
+    .landing .hero h1 {
+      font-size: clamp(2rem, 5vw, 3rem);
+      font-weight: 700;
+      color: #f1f5f9;
+      margin: 0 0 1rem;
+      line-height: 1.2;
+      letter-spacing: -0.02em;
+    }
+    .landing .hero .tagline {
+      font-size: 1.25rem;
+      color: #94a3b8;
+      margin: 0 0 2rem;
+      line-height: 1.5;
+    }
+    .landing .hero .cta {
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .landing .hero .cta a {
+      display: inline-block;
+      padding: 0.875rem 1.75rem;
+      border-radius: 10px;
+      font-weight: 600;
+      text-decoration: none;
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+    .landing .hero .cta .btn-primary {
+      background: #22c55e;
+      color: #0f172a;
+    }
+    .landing .hero .cta .btn-primary:hover {
+      background: #16a34a;
+      transform: translateY(-1px);
+      box-shadow: 0 8px 24px rgba(34, 197, 94, 0.35);
+    }
+    .landing .hero .cta .btn-outline {
+      background: transparent;
+      color: #22c55e;
+      border: 2px solid #22c55e;
+    }
+    .landing .hero .cta .btn-outline:hover {
+      background: rgba(34, 197, 94, 0.1);
+      transform: translateY(-1px);
+    }
+    .landing section {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 2.5rem 1.5rem;
+    }
+    .landing section h2 {
+      font-size: 1.5rem;
+      font-weight: 600;
+      color: #f1f5f9;
+      margin: 0 0 1.25rem;
+      text-align: center;
+    }
+    .landing .intro {
+      font-size: 1.05rem;
+      color: #cbd5e1;
+      line-height: 1.7;
+      text-align: center;
+    }
+    .landing .features {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 1.25rem;
+      margin-top: 2rem;
+    }
+    .landing .feature-card {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 14px;
+      padding: 1.5rem;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .landing .feature-card:hover {
+      border-color: #22c55e40;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+    }
+    .landing .feature-card .icon {
+      font-size: 1.75rem;
+      margin-bottom: 0.75rem;
+    }
+    .landing .feature-card h3 {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: #f1f5f9;
+      margin: 0 0 0.5rem;
+    }
+    .landing .feature-card p {
+      font-size: 0.95rem;
+      color: #94a3b8;
+      margin: 0;
+      line-height: 1.5;
+    }
+    .landing .benefits ul {
+      list-style: none;
+      padding: 0;
+      margin: 1.5rem 0 0;
+      max-width: 560px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .landing .benefits li {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.75rem;
+      padding: 0.75rem 0;
+      border-bottom: 1px solid #334155;
+      color: #cbd5e1;
+      font-size: 1rem;
+      line-height: 1.5;
+    }
+    .landing .benefits li:last-child { border-bottom: none; }
+    .landing .benefits .check { color: #22c55e; font-size: 1.25rem; flex-shrink: 0; }
+    .landing .cta-section {
+      text-align: center;
+      padding: 3rem 1.5rem;
+    }
+    .landing .cta-section p {
+      color: #94a3b8;
+      margin-bottom: 1.25rem;
+    }
+    .landing .nav-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1rem 1.5rem;
+      max-width: 900px;
+      margin: 0 auto;
+      border-bottom: 1px solid #334155;
+    }
+    .landing .nav-top .logo {
+      font-size: 1.35rem;
+      font-weight: 700;
+      color: #22c55e;
+      text-decoration: none;
+    }
+    .landing .nav-top nav a {
+      margin-left: 1.25rem;
+      color: #94a3b8;
+      text-decoration: none;
+      font-weight: 500;
+    }
+    .landing .nav-top nav a:hover { color: #22c55e; }
+  </style>
+</head>
+<body class="landing">
+  <header class="nav-top">
+    <a href="/" class="logo">WhatsGPT</a>
+    <% if (typeof user !== 'undefined' && user) { %>
+      <nav>
+        <a href="/config">Configuração</a>
+        <a href="/qrcode">QR Code</a>
+        <a href="/logout">Sair</a>
+      </nav>
+    <% } else { %>
+      <nav>
+        <a href="/login">Entrar</a>
+      </nav>
+    <% } %>
+  </header>
+
+  <main>
+    <section class="hero">
+      <h1>Assistente de IA no seu WhatsApp</h1>
+      <p class="tagline">Responde clientes e contatos 24h com GPT ou Grok. Configure o tom de voz, use suas URLs e arquivos como base de conhecimento e deixe a IA trabalhar por você.</p>
+      <div class="cta">
+        <% if (typeof user !== 'undefined' && user) { %>
+          <a href="/config" class="btn-primary">Abrir painel</a>
+          <a href="/qrcode" class="btn-outline">Conectar WhatsApp</a>
+        <% } else { %>
+          <a href="/login" class="btn-primary">Começar agora</a>
+        <% } %>
+      </div>
+    </section>
+
+    <section>
+      <h2>O que é o WhatsGPT?</h2>
+      <p class="intro">
+        O WhatsGPT conecta seu número do WhatsApp a um assistente inteligente. Quem te manda mensagem recebe respostas automáticas geradas por IA (OpenAI GPT ou xAI Grok). Você define o perfil do bot, o que ele pode usar como referência (sites, PDFs, planilhas) e qual modelo usar — tudo pelo painel web.
+      </p>
+    </section>
+
+    <section>
+      <h2>Recursos</h2>
+      <div class="features">
+        <div class="feature-card">
+          <div class="icon">💬</div>
+          <h3>Respostas automáticas</h3>
+          <p>O bot responde mensagens de texto, áudio (transcrição com Whisper) e imagens (visão com GPT).</p>
+        </div>
+        <div class="feature-card">
+          <div class="icon">🧠</div>
+          <h3>GPT e Grok</h3>
+          <p>Escolha entre modelos OpenAI (ex.: GPT-3.5, GPT-4) ou xAI Grok. Troque quando quiser.</p>
+        </div>
+        <div class="feature-card">
+          <div class="icon">📎</div>
+          <h3>Contexto personalizado</h3>
+          <p>Use URLs (o conteúdo é extraído) e arquivos (PDF, planilhas, CSV) para dar base ao assistente.</p>
+        </div>
+        <div class="feature-card">
+          <div class="icon">⚙️</div>
+          <h3>Vários perfis</h3>
+          <p>Crie múltiplas configurações (prompt, modelo, links) e ative a que quiser para o número.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="benefits">
+      <h2>Benefícios</h2>
+      <ul>
+        <li><span class="check">✓</span> <strong>Atendimento 24h</strong> — Respostas imediatas sem depender de horário.</li>
+        <li><span class="check">✓</span> <strong>Menos trabalho repetitivo</strong> — Dúvidas frequentes e pedidos simples resolvidos pela IA.</li>
+        <li><span class="check">✓</span> <strong>Tom e regras sob seu controle</strong> — Você define o prompt e as fontes de informação.</li>
+        <li><span class="check">✓</span> <strong>Um número, vários usuários</strong> — Cada conta pode conectar seu próprio WhatsApp e configurar seu bot.</li>
+      </ul>
+    </section>
+
+    <section class="cta-section">
+      <p>Conecte seu WhatsApp, configure o assistente e comece a receber respostas automáticas.</p>
+      <% if (typeof user !== 'undefined' && user) { %>
+        <a href="/config" class="btn btn-primary">Abrir painel</a>
+      <% } else { %>
+        <a href="/login" class="btn btn-primary">Entrar ou registrar</a>
+      <% } %>
+    </section>
+  </main>
+</body>
+</html>

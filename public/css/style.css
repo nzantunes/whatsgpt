@@ -1,0 +1,351 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+  color: #e2e8f0;
+  min-height: 100vh;
+}
+
+.app {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 1rem 1.5rem;
+  min-height: 100vh;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid #334155;
+  margin-bottom: 1.5rem;
+}
+
+.logo {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #22c55e;
+  text-decoration: none;
+}
+
+.header nav a {
+  margin-left: 1rem;
+  color: #94a3b8;
+  text-decoration: none;
+}
+
+.header nav a:hover {
+  color: #22c55e;
+}
+
+.url-hint {
+  font-size: 0.85rem;
+  color: #64748b;
+  margin-bottom: 0.5rem;
+}
+
+.url-hint strong {
+  color: #94a3b8;
+}
+
+.main {
+  padding: 0.5rem 0;
+}
+
+.card {
+  background: #1e293b;
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  border: 1px solid #334155;
+}
+
+.card h1, .card h2 {
+  margin-top: 0;
+  color: #f1f5f9;
+}
+
+.error {
+  color: #f87171;
+  margin-bottom: 1rem;
+}
+
+.warning {
+  color: #fbbf24;
+}
+
+.phone {
+  color: #94a3b8;
+  margin-bottom: 1rem;
+}
+
+.form label {
+  display: block;
+  margin-bottom: 0.75rem;
+  color: #cbd5e1;
+}
+
+.form input[type="text"],
+.form input[type="password"],
+.form textarea,
+.form select {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #475569;
+  border-radius: 8px;
+  background: #0f172a;
+  color: #e2e8f0;
+  margin-top: 0.25rem;
+}
+
+.form textarea {
+  min-height: 80px;
+  resize: vertical;
+}
+
+.form-actions {
+  margin-top: 1rem;
+  display: flex;
+  gap: 0.5rem;
+}
+
+.btn {
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  border: none;
+  background: #22c55e;
+  color: #0f172a;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn:hover {
+  background: #16a34a;
+}
+
+.btn-secondary {
+  background: #475569;
+  color: #e2e8f0;
+}
+
+.btn-secondary:hover {
+  background: #64748b;
+}
+
+.btn-sm {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.875rem;
+  margin-left: 0.25rem;
+}
+
+.btn-danger {
+  background: #dc2626;
+  color: #fff;
+}
+
+.btn-danger:hover {
+  background: #b91c1c;
+}
+
+/* Pilhas de arquivos na configuração */
+.config-files-pilhas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  min-height: 2rem;
+}
+
+.file-pilha {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  max-width: 100%;
+}
+
+.file-pilha .filename {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.875rem;
+  color: #e2e8f0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-pilha .btn-delete-file {
+  flex-shrink: 0;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  background: #dc2626;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.file-pilha .btn-delete-file:hover {
+  background: #b91c1c;
+}
+
+.login-page .main {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 70vh;
+}
+
+.login-card {
+  width: 100%;
+  max-width: 400px;
+}
+
+.login-card .form.inline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: flex-end;
+}
+
+.login-card .form.inline input {
+  width: auto;
+  min-width: 120px;
+}
+
+.hint {
+  font-size: 0.875rem;
+  color: #94a3b8;
+  margin: 1rem 0 0.5rem;
+}
+
+.qrcode-card #qrcode-container {
+  text-align: center;
+  padding: 1rem;
+  min-height: 320px;
+}
+
+.qrcode-card #qrcode-img {
+  max-width: 300px;
+  height: auto;
+}
+
+.qrcode-card .status {
+  color: #94a3b8;
+  font-size: 0.9rem;
+}
+
+.qrcode-error {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: #7f1d1d;
+  border: 1px solid #b91c1c;
+  border-radius: 8px;
+  color: #fecaca;
+  font-size: 0.9rem;
+  text-align: left;
+}
+
+.qrcode-error code {
+  background: #450a0a;
+  padding: 0.2rem 0.4rem;
+  border-radius: 4px;
+}
+
+.config-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 1rem;
+}
+
+.config-list li {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  background: #0f172a;
+  border-radius: 8px;
+  margin-bottom: 0.5rem;
+  border: 1px solid #334155;
+}
+
+.config-list .name {
+  font-weight: 600;
+  flex: 1;
+  min-width: 120px;
+}
+
+.badge.active {
+  background: #22c55e;
+  color: #0f172a;
+  padding: 0.2rem 0.5rem;
+  border-radius: 6px;
+  font-size: 0.75rem;
+}
+
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0,0,0,0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+}
+
+.modal-content {
+  max-width: 560px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+#config-files {
+  margin: 0.5rem 0;
+  font-size: 0.875rem;
+  color: #94a3b8;
+}
+
+.test-card textarea {
+  width: 100%;
+  padding: 0.5rem;
+  border-radius: 8px;
+  border: 1px solid #475569;
+  background: #0f172a;
+  color: #e2e8f0;
+  margin: 0.5rem 0;
+}
+
+.test-result {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: #0f172a;
+  border-radius: 8px;
+  white-space: pre-wrap;
+  font-size: 0.9rem;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.test-card #test-config-id {
+  margin-right: 0.5rem;
+  padding: 0.35rem 0.5rem;
+  border-radius: 6px;
+  border: 1px solid #475569;
+  background: #0f172a;
+  color: #e2e8f0;
+}

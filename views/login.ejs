@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Login — WhatsGPT</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="app login-page">
+    <header class="header">
+      <a href="/" class="logo">WhatsGPT</a>
+    </header>
+    <main class="main">
+      <div class="card login-card">
+        <h1>Entrar</h1>
+        <p class="hint"><strong>Novas contas:</strong> Após criar a conta, você será enviado para a página do QR Code. É obrigatório escanear o QR Code para vincular seu número ao seu usuário no banco de dados. Só depois disso você poderá acessar a página Configuração.</p>
+        <% if (typeof error !== 'undefined' && error) { %>
+          <p class="error"><%= error %></p>
+        <% } %>
+        <form method="post" action="/login" class="form">
+          <label>
+            Usuário
+            <input type="text" name="username" required autocomplete="username">
+          </label>
+          <label>
+            Senha
+            <input type="password" name="password" required autocomplete="current-password">
+          </label>
+          <button type="submit">Entrar</button>
+        </form>
+        <p class="hint">Não tem conta? Registre-se abaixo (primeiro usuário será criado como admin).</p>
+        <form id="register-form" class="form inline">
+          <input type="text" name="username" placeholder="Novo usuário" required>
+          <input type="password" name="password" placeholder="Senha" required>
+          <button type="submit">Registrar</button>
+        </form>
+      </div>
+    </main>
+  </div>
+  <script>
+    document.getElementById('register-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const form = e.target;
+      const res = await fetch('/api/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username: form.username.value,
+          password: form.password.value,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) window.location.href = '/qrcode';
+      else if (res.status === 0 || res.type === 'error') alert('Não foi possível conectar ao servidor.\n\n• Use na barra de endereço: http://localhost:<%= typeof port !== "undefined" ? port : 3000 %>\n• Confira se o app está rodando (npm start no terminal).');
+      else alert(data.error || 'Erro ao registrar');
+    });
+  </script>
+</body>
+</html>

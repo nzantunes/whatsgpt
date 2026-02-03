@@ -1,0 +1,22 @@
+# Dependências
+node_modules/
+
+# Ambiente e segredos
+.env
+.env.local
+.env.*.local
+
+# Dados e cache do app
+data/
+.wwebjs_cache/
+uploads/
+
+# Logs e OS
+*.log
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.code-workspace
