@@ -14,14 +14,22 @@ Aplicação web que conecta um número de WhatsApp via QR Code e responde mensag
 
 - Node.js 18+
 - Chromium (instalado automaticamente pelo Puppeteer)
+- Python 3.10+ (para automação: YouTube, Word, Excel, câmera, etc.)
+- Ngrok (opcional, para acesso externo e links no WhatsApp)
 
 ## Instalação
 
+**Instalação rápida (só Node):**
+
 ```bash
 npm install
-cp .env.example .env
-# Edite .env e defina OPENAI_API_KEY (obrigatório) e opcionalmente XAI_API_KEY
+# Crie .env com PORT, OPENAI_API_KEY, SESSION_SECRET, BASE_URL
 ```
+
+**Instalação completa (quem for usar – todos os pacotes e ngrok):**  
+Veja **[INSTALACAO.md](INSTALACAO.md)** para Node, Python, pip, ngrok e comandos prontos.
+
+**Iniciar o app com ngrok (Windows):** use `iniciar_whatsgpt_com_ngrok.bat` – o ngrok sobe junto com o WhatsGPT.
 
 ## Uso
 
