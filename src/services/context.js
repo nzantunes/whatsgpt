@@ -6,6 +6,11 @@ const XLSX = require('xlsx');
 const { parse } = require('csv-parse/sync');
 const config = require('../config');
 
+// Garantir que fetch está disponível
+if (typeof globalThis.fetch === 'undefined') {
+  console.error('[Context] ❌ ERRO: fetch não está disponível! Node.js precisa ser versão 18+ ou instalar node-fetch');
+}
+
 async function fetchUrlText(url) {
   try {
     const res = await globalThis.fetch(url, {
@@ -33,6 +38,7 @@ async function fetchUrlsContent(urls) {
   }
   return parts.join('\n\n');
 }
+
 
 async function extractFileText(filePath, mimeType) {
   if (!fs.existsSync(filePath)) return '';
@@ -82,8 +88,8 @@ function getMaxSystemChars(model) {
 /** Para modelos com 8192 tokens, usar menos mensagens de histórico. */
 function getMaxHistoryLimit(model) {
   const m = (model || '').toLowerCase();
-  if (m.includes('gpt-3.5')) return 3;  // 6 mensagens (3 pares) para caber em 8k
-  return 10;
+  if (m.includes('gpt-3.5')) return 10;  // 20 mensagens para caber em 8k
+  return 50;
 }
 
 function truncate(str, max) {
@@ -93,7 +99,80 @@ function truncate(str, max) {
 
 async function buildSystemContent(cfg, models, model) {
   const maxChars = getMaxSystemChars(model);
+  
+  // Se for agente de automação, usar prompt específico
+  if (model === 'automation-agent') {
+    return `Você é um Agente de Automação do Cursor IDE. Sua função é executar tarefas de programação automaticamente.
+
+INSTRUÇÕES:
+- Todas as mensagens do usuário serão interpretadas como solicitações de automação
+- Você deve processar a tarefa e executá-la no Cursor IDE
+- Seja claro e direto nas respostas sobre o que está sendo executado
+- Informe o progresso da automação em tempo real
+
+CAPACIDADES:
+- Criar código Python, JavaScript, TypeScript, HTML, CSS, etc.
+- Gerar funções, classes, scripts
+- Criar arquivos com nomes específicos
+- Automatizar tarefas de programação
+- Executar código no terminal do Cursor
+
+EXEMPLOS DE TAREFAS:
+- "criar função Python que calcula fatorial"
+- "gerar código para API REST"
+- "criar arquivo calculadora.py com funções matemáticas"
+- "automatizar criação de script de backup"
+
+IMPORTANTE:
+- O sistema detecta automaticamente a tarefa e executa no Cursor
+- Você não precisa usar marcadores especiais
+- Apenas descreva a tarefa claramente`;
+  }
+  
   const parts = [cfg.systemPrompt || 'Você é um assistente útil.'];
+  
+  // Adicionar instruções sobre geração de imagens e PDFs
+  const generationInstructions = `
+
+CAPACIDADES ESPECIAIS - Geração de Mídia e Automação:
+Você pode gerar imagens, PDFs e executar automações quando o usuário solicitar. Para isso, use os seguintes marcadores especiais na sua resposta:
+
+1. GERAR IMAGEM: Quando o usuário pedir para criar, gerar, desenhar, mostrar uma imagem, ilustração, foto ou qualquer conteúdo visual, use o marcador:
+   [GERAR_IMAGEM: descrição detalhada da imagem]
+   Exemplo: Se o usuário disser "mostre um gato fofo", responda normalmente e adicione [GERAR_IMAGEM: um gato fofo e adorável brincando]
+   NOTA: A geração de imagens usa DALL-E 3 da OpenAI. Funciona mesmo se você for um modelo Grok - o sistema usará a API OpenAI para gerar a imagem.
+
+2. GERAR PDF: Quando o usuário pedir para criar, gerar, fazer um documento, PDF, arquivo ou relatório, use o marcador:
+   [GERAR_PDF: conteúdo do documento |título: Título do Documento]
+   Exemplo: Se o usuário disser "crie um documento sobre Python", responda normalmente e adicione [GERAR_PDF: Introdução ao Python... |título: Guia de Python]
+   NOTA: A geração de PDF funciona localmente e está disponível para todos os modelos (GPT e Grok).
+
+3. AUTOMAÇÃO DO CURSOR: Quando o usuário pedir para criar código, automatizar tarefas, gerar scripts, criar funções, arquivos ou qualquer tarefa de programação que possa ser executada no Cursor IDE, sugira o uso da automação:
+   - Se o usuário pedir para "criar código", "gerar função", "automatizar", "criar arquivo Python", etc., sugira usar o comando de automação
+   - Exemplo: "Para criar esse código automaticamente no Cursor, você pode usar: /automate criar função Python que calcula fatorial"
+   - O sistema detecta automaticamente palavras-chave como: "automatizar", "criar código", "gerar código", "criar função", "criar arquivo", "executar no cursor"
+   - O usuário pode usar comandos como: /automate, /auto, ou simplesmente descrever a tarefa com palavras-chave
+   - Comandos diretos do agente: "abrir navegador" (abre o navegador), "pesquisar X" ou "buscar X" (abre o Google com a pesquisa), "sair" ou "exit" (encerra/comando de saída)
+   NOTA: A automação requer que o servidor de automação esteja rodando localmente. O sistema abrirá o Cursor IDE, gerará o código usando IA e criará o arquivo automaticamente. Comandos como abrir navegador e pesquisar são executados diretamente no PC.
+
+// 4. GERAR VÍDEO: Removido - funcionalidade desabilitada
+
+CONVERSA COLABORATIVA:
+Quando o usuário usar o comando /colaborar, /debate ou /discutir, ou quando fizer perguntas complexas, múltiplos modelos de IA (GPT e Grok) trabalharão juntos para encontrar a melhor solução.
+Cada modelo dará sua perspectiva, fará perguntas relevantes e colaborará para chegar a uma resposta completa e precisa.
+
+IMPORTANTE:
+- Use os marcadores APENAS quando o usuário claramente solicitar criação/geração de imagem, documento ou vídeo
+- Para automação, SUGIRA o uso ao invés de usar marcadores - o sistema detecta automaticamente
+- Sempre responda com texto normal primeiro, depois adicione o marcador ou sugestão
+- Para imagens, seja descritivo e detalhado no prompt (máximo 1000 caracteres)
+- Para PDFs, inclua o conteúdo completo do documento no marcador
+// - Para vídeos: funcionalidade removida
+- Os marcadores devem estar no final da sua resposta ou após o texto explicativo
+- Você (Grok) pode usar todos os marcadores normalmente - o sistema cuidará da geração técnica`;
+  
+  parts.push(generationInstructions);
+  
   if (cfg.additionalInfo) parts.push('\nInformações adicionais:\n' + cfg.additionalInfo);
   let urlsContent = cfg.urlsContentCache;
   if (!urlsContent && cfg.urls) {
@@ -101,6 +180,7 @@ async function buildSystemContent(cfg, models, model) {
     urlsContent = await fetchUrlsContent(urls);
   }
   if (urlsContent) parts.push('\nConteúdo das URLs (contexto):\n' + urlsContent);
+  
   if (models && models.FileContext && cfg.id) {
     const files = await models.FileContext.findAll({ where: { configId: cfg.id } });
     const fileLog = [];
@@ -145,8 +225,8 @@ function logRequestToModel(model, systemContent, userMessage, history = [], sour
   console.log('---');
 }
 
-const MAX_HISTORY_MESSAGES = 5;
-const MAX_MESSAGE_CHARS = 400;
+const MAX_HISTORY_MESSAGES = 50;
+const MAX_MESSAGE_CHARS = 1200;
 
 async function getRecentHistory(Conversation, contactId, limit = MAX_HISTORY_MESSAGES) {
   if (!Conversation) return [];

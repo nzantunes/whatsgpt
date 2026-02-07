@@ -208,4 +208,38 @@
         else testResult.textContent = 'Erro: ' + msg;
       });
   });
+
+  // Modelo do Agente de Automação
+  var agentModelSelect = document.getElementById('agent-model');
+  var saveAgentConfigBtn = document.getElementById('save-agent-config');
+  var agentConfigMsg = document.getElementById('agent-config-msg');
+  if (agentModelSelect) {
+    fetch('/api/agent-config', { credentials: 'same-origin' })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        var v = (data && data.agentModel) ? String(data.agentModel) : 'gpt-4o';
+        if (agentModelSelect.querySelector('option[value="' + v + '"]')) agentModelSelect.value = v;
+      })
+      .catch(function () {});
+  }
+  if (saveAgentConfigBtn && agentModelSelect) {
+    saveAgentConfigBtn.addEventListener('click', function () {
+      agentConfigMsg.textContent = '';
+      var value = agentModelSelect.value;
+      fetch('/api/agent-config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ agentModel: value }),
+        credentials: 'same-origin',
+      })
+        .then(function (r) { return r.json().then(function (data) { return { ok: r.ok, data: data }; }); })
+        .then(function (res) {
+          if (res.ok) agentConfigMsg.textContent = 'Modelo do agente salvo: ' + (res.data.agentModel || value);
+          else agentConfigMsg.textContent = 'Erro: ' + (res.data.error || 'não foi possível salvar');
+        })
+        .catch(function () { agentConfigMsg.textContent = 'Erro ao salvar'; });
+    });
+  }
+
+  // Teste de geração de vídeo removido - funcionalidade desabilitada
 })();

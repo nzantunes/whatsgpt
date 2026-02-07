@@ -5,7 +5,7 @@ function defineBotConfig(sequelize) {
     id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
     name: { type: DataTypes.STRING, allowNull: false },
     systemPrompt: { type: DataTypes.TEXT, allowNull: false, defaultValue: '' },
-    model: { type: DataTypes.STRING, allowNull: false, defaultValue: 'gpt-3.5-turbo' },
+    model: { type: DataTypes.STRING, allowNull: false, defaultValue: 'gpt-4o' },
     additionalInfo: { type: DataTypes.TEXT, allowNull: true },
     urls: { type: DataTypes.TEXT, allowNull: true },
     urlsContentCache: { type: DataTypes.TEXT, allowNull: true },

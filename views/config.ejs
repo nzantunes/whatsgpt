@@ -57,6 +57,7 @@
                 <option value="grok-4">grok-4 (xAI)</option>
                 <option value="grok-2-1212">grok-2-1212 (descontinuado → usa grok-3)</option>
                 <option value="grok-beta">grok-beta (xAI)</option>
+                <option value="automation-agent">🤖 Agente de Automação (Cursor)</option>
               </select>
             </label>
             <label>Informações adicionais <textarea name="additionalInfo" id="config-additionalInfo" rows="2"></textarea></label>
@@ -72,6 +73,24 @@
         </div>
       </div>
 
+      <div class="card">
+        <h2>🤖 Agente de Automação</h2>
+        <p class="hint" style="margin-bottom: 10px;">Modelo de IA que interpreta o que o usuário quer e controla o agente (abrir navegador, pesquisar, YouTube, etc.).</p>
+        <label>Modelo para interpretar comandos
+          <select id="agent-model">
+            <option value="gpt-4o">GPT-4o (OpenAI)</option>
+            <option value="gpt-4">GPT-4 (OpenAI)</option>
+            <option value="gpt-3.5-turbo">GPT-3.5 Turbo (OpenAI)</option>
+            <option value="grok-4">Grok-4 (xAI)</option>
+            <option value="grok-2">Grok-2 (xAI)</option>
+            <option value="grok-3">Grok-3 (xAI)</option>
+            <option value="grok-beta">Grok Beta (xAI)</option>
+          </select>
+        </label>
+        <button type="button" id="save-agent-config" class="btn" style="margin-top: 8px;">Salvar modelo do agente</button>
+        <p id="agent-config-msg" class="hint" style="margin-top: 6px; font-size: 12px;"></p>
+      </div>
+
       <div class="card test-card">
         <h2>Testar resposta (sem enviar no WhatsApp)</h2>
         <select id="test-config-id">
@@ -84,6 +103,8 @@
         <button type="button" id="test-gpt" class="btn">Enviar teste</button>
         <pre id="test-result" class="test-result"></pre>
       </div>
+
+      <!-- Seção de teste de vídeo removida - funcionalidade desabilitada -->
     </main>
   </div>
   <script src="/js/config.js"></script>

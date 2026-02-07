@@ -1,8 +1,13 @@
 const express = require('express');
 const path = require('path');
+const fs = require('fs');
 const multer = require('multer');
 const router = express.Router();
 const config = require('../config');
+
+// Câmera: último frame enviado pelo agente (para ver via rede externa)
+let latestCameraFrame = null;
+let latestCameraTime = 0;
 const { getPhoneDb, normalizePhone } = require('../db');
 const { initPhoneModels } = require('../db/models/phone');
 const { initMainModels, getMainModels } = require('../db/models/main');
@@ -59,6 +64,57 @@ function parseConfigId(val) {
 
 router.get('/health', (req, res) => {
   res.json({ ok: true, port: config.port });
+});
+
+// POST: agente envia frame JPEG (body bruto)
+router.post('/camera/frame', express.raw({ type: 'image/jpeg', limit: '5mb' }), (req, res) => {
+  if (req.body && Buffer.isBuffer(req.body) && req.body.length > 0) {
+    latestCameraFrame = req.body;
+    latestCameraTime = Date.now();
+  }
+  res.status(204).end();
+});
+
+// GET: último frame (imagem JPEG) — URL para ver na rede externa
+router.get('/camera', (req, res) => {
+  if (!latestCameraFrame) {
+    res.status(404).set('Content-Type', 'text/plain').send('Câmera não ligada. Envie "ligar câmera" pelo WhatsApp.');
+    return;
+  }
+  res.set('Content-Type', 'image/jpeg').set('Cache-Control', 'no-store').send(latestCameraFrame);
+});
+
+// GET: página HTML que exibe a imagem ao vivo (atualiza a cada 1s)
+router.get('/camera/view', (req, res) => {
+  const baseUrl = config.baseUrl || `http://localhost:${config.port}`;
+  const imageUrl = `${baseUrl.replace(/\/$/, '')}/api/camera`;
+  const html = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Câmera ao vivo</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 0; padding: 1rem; background: #111; color: #eee; text-align: center; }
+    h1 { font-size: 1.25rem; }
+    img { max-width: 100%; height: auto; border-radius: 8px; background: #222; }
+    .url { word-break: break-all; font-size: 0.875rem; color: #888; margin-top: 0.5rem; }
+  </style>
+</head>
+<body>
+  <h1>Câmera ao vivo</h1>
+  <p><img id="frame" src="${imageUrl}" alt="Câmera" style="max-height: 80vh;" onerror="this.style.display='none'; document.getElementById('msg').textContent='Aguardando câmera...'"></p>
+  <p id="msg"></p>
+  <p class="url">${imageUrl}</p>
+  <script>
+    setInterval(function() {
+      var img = document.getElementById('frame');
+      img.src = '${imageUrl}?t=' + Date.now();
+    }, 1000);
+  </script>
+</body>
+</html>`;
+  res.set('Content-Type', 'text/html; charset=utf-8').send(html);
 });
 
 router.get('/check-auth', (req, res) => {
@@ -156,7 +212,7 @@ router.post('/config', requireAuth, async (req, res) => {
   const cfg = await models.BotConfig.create({
     name: name || 'Nova configuração',
     systemPrompt: systemPrompt || '',
-    model: model || 'gpt-3.5-turbo',
+    model: model || 'gpt-4o',
     additionalInfo: additionalInfo || '',
     urls: Array.isArray(urls) ? urls.join('\n') : (urls || ''),
     isActive: false,
@@ -190,6 +246,16 @@ router.post('/config/test-gpt', requireAuth, async (req, res) => {
   }
   try {
     const modelForChat = cfg.get ? cfg.get('model') : cfg.model;
+    
+    // Se for agente de automação, usar serviço de automação (script direto ou servidor)
+    if (modelForChat === 'automation-agent') {
+      const automationService = require('../services/automation');
+      // Preferir script direto (cursor_automation.py) — evita erro "cannot set daemon status" e não exige servidor na 8765
+      const result = await automationService.runAutomation(message, null);
+      const formattedResult = automationService.formatAutomationResult(result);
+      return res.json({ reply: formattedResult });
+    }
+    
     const systemContent = await contextService.buildSystemContent(cfg, cfg.id != null && models ? models : null, modelForChat);
     contextService.logRequestToModel(modelForChat, systemContent, message, [], 'Teste GPT');
     const reply = await aiService.chat(systemContent, message, modelForChat);
@@ -291,6 +357,25 @@ router.delete('/config/:id/files/:fileId', requireAuth, async (req, res) => {
   res.json({ ok: true });
 });
 
+// Modelo do Agente de Automação (GPT ou Grok) — controla qual IA interpreta o que o usuário quer
+router.get('/agent-config', requireAuth, (req, res) => {
+  res.json({ agentModel: config.getAgentModel ? config.getAgentModel() : 'gpt-4o' });
+});
+
+router.post('/agent-config', requireAuth, (req, res) => {
+  const { agentModel } = req.body || {};
+  const allowed = ['gpt-4o', 'gpt-4', 'gpt-3.5-turbo', 'grok-2', 'grok-4', 'grok-3', 'grok-beta'];
+  const value = (agentModel && allowed.includes(agentModel)) ? agentModel : 'gpt-4o';
+  const dataDir = config.dataDir || path.resolve(__dirname, '../../data');
+  try {
+    fs.mkdirSync(dataDir, { recursive: true });
+    fs.writeFileSync(path.join(dataDir, 'agent-config.json'), JSON.stringify({ agentModel: value }, null, 2), 'utf8');
+    res.json({ ok: true, agentModel: value });
+  } catch (e) {
+    res.status(500).json({ error: e.message || 'Erro ao salvar' });
+  }
+});
+
 router.post('/config/activate/:id', requireAuth, async (req, res) => {
   const id = parseConfigId(req.params.id);
   if (id == null) return res.status(400).json({ error: 'ID da configuração inválido. Recarregue a página e tente novamente.' });
@@ -320,5 +405,54 @@ router.post('/config/refresh-urls/:id', requireAuth, async (req, res) => {
   await c.save();
   res.json({ ok: true });
 });
+
+router.post('/generate-image', requireAuth, async (req, res) => {
+  const { prompt, size, quality } = req.body || {};
+  if (!prompt || !String(prompt).trim()) {
+    return res.status(400).json({ error: 'Prompt obrigatório para gerar imagem' });
+  }
+  try {
+    const imageBuffer = await aiService.generateImage(
+      String(prompt).trim(),
+      size || '1024x1024',
+      quality || 'standard'
+    );
+    const base64 = imageBuffer.toString('base64');
+    res.json({
+      ok: true,
+      image: `data:image/png;base64,${base64}`,
+      message: 'Imagem gerada com sucesso',
+    });
+  } catch (e) {
+    console.error('Erro ao gerar imagem:', e.message);
+    res.status(500).json({ error: e.message || 'Erro ao gerar imagem' });
+  }
+});
+
+router.post('/generate-pdf', requireAuth, async (req, res) => {
+  const { content, title } = req.body || {};
+  if (!content || !String(content).trim()) {
+    return res.status(400).json({ error: 'Conteúdo obrigatório para gerar PDF' });
+  }
+  try {
+    const pdfBuffer = await aiService.generatePDF(
+      String(content).trim(),
+      title || 'Documento Gerado'
+    );
+    const base64 = pdfBuffer.toString('base64');
+    res.json({
+      ok: true,
+      pdf: `data:application/pdf;base64,${base64}`,
+      filename: `${(title || 'documento').replace(/[^a-zA-Z0-9]/g, '_')}.pdf`,
+      message: 'PDF gerado com sucesso',
+    });
+  } catch (e) {
+    console.error('Erro ao gerar PDF:', e.message);
+    res.status(500).json({ error: e.message || 'Erro ao gerar PDF' });
+  }
+});
+
+// Rota de geração de vídeo removida
+// router.post('/generate-video', ...) { ... }
 
 module.exports = router;

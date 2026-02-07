@@ -14,6 +14,10 @@ const config = require('./config');
 const { initMainModels } = require('./db/models/main');
 const { getWhatsAppClient, setSocketIO, getQr, getConnectionStatus } = require('./services/whatsapp');
 
+if (config.verbose) {
+  console.log('[WhatsGPT] Modo verbose ativado (VERBOSE=1). Logs detalhados: HTTP, Socket, Automação.');
+}
+
 const server = http.createServer(app);
 const io = require('socket.io')(server);
 
@@ -31,6 +35,9 @@ io.on('connection', (socket) => {
   const hasUser = !!session?.user;
 
   console.log('[WhatsGPT] Socket conectado | session:', hasSession, '| user:', hasUser, '| userId:', userId);
+  if (config.verbose) {
+    console.log('[WhatsGPT] Socket headers:', socket.handshake?.headers?.['user-agent']?.slice(0, 60) || '-');
+  }
 
   if (userId == null) {
     console.log('[WhatsGPT] QR não disponível: faça login em /login e abra /qrcode de novo.');
@@ -73,6 +80,11 @@ async function main() {
   if (!fs.existsSync(config.uploadsDir)) fs.mkdirSync(config.uploadsDir, { recursive: true });
   await initMainModels();
   console.log('[WhatsGPT] Servidor pronto. Cada usuário conecta seu WhatsApp em /qrcode.');
+  const baseUrl = config.baseUrl || `http://localhost:${config.port}`;
+  console.log('[WhatsGPT] BASE_URL (links câmera/QR no WhatsApp):', baseUrl);
+  if (baseUrl.includes('localhost')) {
+    console.log('[WhatsGPT] Para enviar link do ngrok no WhatsApp, defina BASE_URL no .env com a URL do ngrok.');
+  }
 
   const port = config.port;
   server.on('error', (err) => {

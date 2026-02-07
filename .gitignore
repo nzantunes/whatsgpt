@@ -9,7 +9,9 @@ node_modules/
 # Dados e cache do app
 data/
 .wwebjs_cache/
+.puppeteer-cache/
 uploads/
+scripts/.camera_stream.pid
 
 # Logs e OS
 *.log

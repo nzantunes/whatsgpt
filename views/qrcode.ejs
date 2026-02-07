@@ -146,10 +146,10 @@
           wait.style.display = 'none';
           const errEl = document.getElementById('qrcode-error');
           errEl.style.display = 'block';
-          errEl.innerHTML = '<strong>Navegador não iniciou.</strong> ' + s.browserError +
-            '<br><br>Instale o Chromium e reinicie o app:<br>' +
-            '<code>sudo apt install chromium-browser</code><br><br>' +
-            'Ou defina no .env: <code>CHROMIUM_PATH=/usr/bin/chromium</code>';
+          var baseUrl = window.location.origin || ('http://localhost:' + (window.location.port || '3000'));
+            errEl.innerHTML = '<strong>Navegador não iniciou.</strong><br><br>' + s.browserError +
+            '<br><br><strong>Se ainda não resolver (Windows):</strong> No .env use <code>CHROMIUM_PATH=C:/Program Files/Google/Chrome/Application/chrome.exe</code> e <code>USE_BUNDLED_CHROMIUM=false</code>.<br>' +
+            '<strong>Linux:</strong> <code>sudo apt install chromium-browser</code> e no .env: <code>CHROMIUM_PATH=/usr/bin/chromium</code>. Acesse <a href="' + baseUrl + '">' + baseUrl + '</a> após iniciar.';
           return;
         }
         if (s.ready && s.phone) {

@@ -25,21 +25,33 @@ function defineUserPhone(sequelize) {
   }, { timestamps: true, tableName: 'user_phones' });
 }
 
-let User, Session, UserPhone;
+function defineAgentConversation(sequelize) {
+  return sequelize.define('AgentConversation', {
+    id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+    contactId: { type: DataTypes.STRING, allowNull: true },
+    userMessage: { type: DataTypes.TEXT, allowNull: false },
+    taskExecuted: { type: DataTypes.TEXT, allowNull: false },
+    success: { type: DataTypes.BOOLEAN, allowNull: false },
+    resultMessage: { type: DataTypes.TEXT, allowNull: true },
+  }, { timestamps: true, tableName: 'agent_conversations' });
+}
+
+let User, Session, UserPhone, AgentConversation;
 
 function initMainModels() {
-  if (User && Session && UserPhone) return Promise.resolve({ User, Session, UserPhone });
+  if (User && Session && UserPhone && AgentConversation) return Promise.resolve({ User, Session, UserPhone, AgentConversation });
   const db = getMainDb();
   User = defineUser(db);
   Session = defineSession(db);
   UserPhone = defineUserPhone(db);
+  AgentConversation = defineAgentConversation(db);
   User.hasMany(UserPhone, { foreignKey: 'userId' });
   UserPhone.belongsTo(User, { foreignKey: 'userId' });
-  return db.sync().then(() => ({ User, Session, UserPhone }));
+  return db.sync().then(() => ({ User, Session, UserPhone, AgentConversation }));
 }
 
 function getMainModels() {
-  return { User, Session, UserPhone };
+  return { User, Session, UserPhone, AgentConversation };
 }
 
 module.exports = {
@@ -48,4 +60,5 @@ module.exports = {
   defineUser,
   defineSession,
   defineUserPhone,
+  defineAgentConversation,
 };
