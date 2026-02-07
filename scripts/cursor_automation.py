@@ -177,6 +177,18 @@ def _get_agent_model() -> str:
     return (AGENT_CONFIG.get("agentModel") or os.environ.get("AGENT_MODEL") or "gpt-4o").strip()
 
 
+def _model_has_small_context(model: str) -> bool:
+    """True se o modelo tem limite de contexto pequeno (ex.: 8192 tokens), para reduzir histórico no prompt."""
+    if not model:
+        return False
+    m = model.lower().strip()
+    if "gpt-3.5" in m:
+        return True
+    if m == "gpt-4" or m.startswith("gpt-4-0") or m.startswith("gpt-4-8k"):
+        return True
+    return False
+
+
 def _grok_model_id(model: str) -> str:
     """Mapeia nome do modelo Grok para o ID da API xAI."""
     if not model or model == "grok-2":
@@ -214,12 +226,20 @@ def get_ai_response(prompt: str, system_prompt: Optional[str] = None, max_tokens
 Principais funções: abrir o navegador, fazer pesquisas na web, ligar/usar a câmera, editar texto em campos e aplicativos.
 Use pyautogui para simular ações (cliques, digitação, atalhos). Seja seguro e peça confirmação para ações destrutivas.
 Não é necessário abrir o Cursor IDE — foque em navegador, pesquisas, câmera e edição de texto."""
+        system_content = system_prompt or default_system
+        # Modelos com 8192 tokens: limitar system+user para não estourar contexto
+        if _model_has_small_context(model):
+            max_system_chars = 14000
+            if len(system_content) > max_system_chars:
+                system_content = system_content[:max_system_chars].rstrip() + "\n\n[... contexto truncado para caber no limite do modelo ...]"
+            if len(prompt) > 4000:
+                prompt = prompt[:4000].rstrip() + "\n\n[...]"
         response = api_client.chat.completions.create(
             model=api_model,
             max_tokens=max_tokens,
             temperature=0.5,
             messages=[
-                {"role": "system", "content": system_prompt or default_system},
+                {"role": "system", "content": system_content},
                 {"role": "user", "content": prompt},
             ],
         )
@@ -3649,8 +3669,9 @@ def _fetch_music_suggestions_from_web(user_task: str) -> str:
         return ""
 
 
-def _get_agent_history_for_prompt() -> str:
-    """Lê o histórico do agente (banco) passado pelo Node. Inclui o que foi feito (ex.: música tocada) para não repetir."""
+def _get_agent_history_for_prompt(max_entries: int = 100, max_result_chars: int = 500) -> str:
+    """Lê o histórico do agente (banco) passado pelo Node. Inclui o que foi feito (ex.: música tocada) para não repetir.
+    max_entries e max_result_chars podem ser reduzidos para modelos com contexto pequeno (8192 tokens)."""
     try:
         raw = os.environ.get("AUTOMATION_AGENT_HISTORY_JSON", "")
         if not raw:
@@ -3661,7 +3682,7 @@ def _get_agent_history_for_prompt() -> str:
             return ""
         lines = []
         songs_played = []
-        for i, h in enumerate(arr[:100]):
+        for i, h in enumerate(arr[:max_entries]):
             if isinstance(h, dict):
                 u = (h.get("userMessage") or h.get("user_message") or "").strip()
                 t = (h.get("taskExecuted") or h.get("task_executed") or "").strip()
@@ -3679,7 +3700,7 @@ def _get_agent_history_for_prompt() -> str:
                 if u or t:
                     part = f"- Usuário: {u[:70]}{'...' if len(u) > 70 else ''} → Tarefa: {t[:50]}{'...' if len(t) > 50 else ''} → {s}"
                     if res:
-                        part += f" | Resultado: {res[:500]}{'...' if len(res) > 500 else ''}"
+                        part += f" | Resultado: {res[:max_result_chars]}{'...' if len(res) > max_result_chars else ''}"
                     lines.append(part)
         out = ""
         if songs_played:
@@ -3709,8 +3730,15 @@ def interpret_task_with_gpt(user_task: str) -> Optional[dict]:
         return None
     if not use_grok and not client:
         return None
-    history_block = _get_agent_history_for_prompt()
+    # Modelos com contexto 8192 tokens (ex.: gpt-4 antigo) exigem histórico e blocos menores
+    small_ctx = _model_has_small_context(model)
+    if small_ctx:
+        history_block = _get_agent_history_for_prompt(max_entries=8, max_result_chars=120)
+    else:
+        history_block = _get_agent_history_for_prompt()
     web_music_block = _fetch_music_suggestions_from_web(user_task)
+    if small_ctx and len(web_music_block) > 800:
+        web_music_block = web_music_block[:800].rstrip() + "\n[...]\n"
     system = (history_block + "\n\n") if history_block else ""
     system += """Você é um assistente que interpreta o que o usuário quer fazer no PC e ajuda o agente a executar.
 

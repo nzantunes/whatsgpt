@@ -147,3 +147,17 @@ EXTRA_MAPPINGS['desligar_dispositivo'] = {
     'function': desligar_dispositivo,
     'description': 'Desligar o dispositivo imediatamente'
 }
+
+# --- Adicionado pelo agente ---
+def open_music_player():
+    if sys.platform == 'win32':
+        subprocess.Popen(['cmd', '/c', 'start', '', 'nome_do_executavel'])
+    else:
+        subprocess.Popen(['nome_do_executavel'])
+
+EXTRA_MAPPINGS['open_music_player'] = {
+    'keywords': ['abrir', 'player', 'música'],
+    'actions': ['abrir'],
+    'function': open_music_player,
+    'description': 'Abre o player de música'
+}
