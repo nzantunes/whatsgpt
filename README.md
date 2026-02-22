@@ -28,7 +28,15 @@ WhatsGPT is a web application that connects a WhatsApp number via QR Code and au
    ```bash
    npm install
    ```
-4. Set up the environment variables as needed (see Environment Variables section).
+4. Create your environment file from the example:
+   ```bash
+   cp .env.example .env
+   ```
+   On Windows PowerShell, you can use:
+   ```powershell
+   Copy-Item .env.example .env
+   ```
+5. Edit `.env` and fill in the required keys (see Environment Variables section).
 
 ## How to Use
 1. Start the server:
@@ -39,11 +47,16 @@ WhatsGPT is a web application that connects a WhatsApp number via QR Code and au
 3. Customize the context and prompts as needed through the app's UI.
 
 ## Environment Variables
-- `WHATSAPP_NUMBER`: The WhatsApp number to connect.
-- grok_API_KEY :
+Use `.env.example` as template and set at least:
+- `SESSION_SECRET`: Secret for sessions.
 - `OPENAI_API_KEY`: Your OpenAI API key.
-- Additional variables as needed.
-- Salve no arquivo .env
+- `GROK_API_KEY`: Your Grok API key (if using Grok).
+- `RUNWAY_API_KEY`: Your Runway API key (if using media generation).
+- `BASE_URL`: Public/local base URL (example: `http://localhost:3002`).
+
+For Windows with local Chrome:
+- `USE_BUNDLED_CHROMIUM=false`
+- `CHROMIUM_PATH=C:/Program Files/Google/Chrome/Application/chrome.exe`
 ## Main Routes
 - `GET /`: Home page.
 - `POST /message`: Endpoint to send messages.
