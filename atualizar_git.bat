@@ -44,19 +44,31 @@ if errorlevel 1 (
   echo Executando git status para diagnostico...
   git status
   git status >> "%LOG_FILE%" 2>&1
-  echo.
-  echo Veja o log: %LOG_FILE%
-  pause
-  exit /b 1
+  echo [INFO] Continuando para tentativa de push.
 )
 
 echo [3/3] git push
-git push >> "%LOG_FILE%" 2>&1
-if errorlevel 1 (
-  echo [ERRO] Falha no git push - remoto, credenciais ou rede.
-  echo Veja o log: %LOG_FILE%
-  pause
-  exit /b 1
+set "CURRENT_BRANCH="
+for /f "delims=" %%B in ('git symbolic-ref --short -q HEAD 2^>nul') do set "CURRENT_BRANCH=%%B"
+
+if defined CURRENT_BRANCH (
+  echo [INFO] Branch atual: !CURRENT_BRANCH!
+  git push origin !CURRENT_BRANCH! >> "%LOG_FILE%" 2>&1
+  if errorlevel 1 (
+    echo [ERRO] Falha no git push da branch !CURRENT_BRANCH!.
+    echo Veja o log: %LOG_FILE%
+    pause
+    exit /b 1
+  )
+) else (
+  echo [INFO] Detached HEAD detectado. Tentando push para origin/main...
+  git push origin HEAD:main >> "%LOG_FILE%" 2>&1
+  if errorlevel 1 (
+    echo [ERRO] Falha no push em detached HEAD para origin/main.
+    echo Veja o log: %LOG_FILE%
+    pause
+    exit /b 1
+  )
 )
 
 echo.
