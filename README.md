@@ -43,7 +43,7 @@ WhatsGPT is a web application that connects a WhatsApp number via QR Code and au
 - grok_API_KEY :
 - `OPENAI_API_KEY`: Your OpenAI API key.
 - Additional variables as needed.
-
+- Salve no arquivo .env
 ## Main Routes
 - `GET /`: Home page.
 - `POST /message`: Endpoint to send messages.
