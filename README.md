@@ -6,7 +6,7 @@ WhatsGPT é uma plataforma web para conectar números do WhatsApp via QR Code e 
 - Node.js + Express
 - Socket.IO
 - whatsapp-web.js (LocalAuth)
-- OpenAI (GPT, Whisper, DALL·E)
+- OpenAI (GPT)
 - xAI (Grok)
 - SQLite (multiusuário / por número)
 - EJS + JS no frontend
