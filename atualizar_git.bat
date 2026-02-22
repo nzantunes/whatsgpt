@@ -40,7 +40,7 @@ if errorlevel 1 (
 echo [2/3] git commit
 git commit -m "chore: atualizar WhatsNain e limpar arquivos gerados" >> "%LOG_FILE%" 2>&1
 if errorlevel 1 (
-  echo [AVISO] Nao houve commit (sem mudancas, conflito ou erro).
+  echo [AVISO] Nao houve commit - sem mudancas, conflito ou erro.
   echo Executando git status para diagnostico...
   git status
   git status >> "%LOG_FILE%" 2>&1
@@ -53,7 +53,7 @@ if errorlevel 1 (
 echo [3/3] git push
 git push >> "%LOG_FILE%" 2>&1
 if errorlevel 1 (
-  echo [ERRO] Falha no git push (remoto/credenciais/rede).
+  echo [ERRO] Falha no git push - remoto, credenciais ou rede.
   echo Veja o log: %LOG_FILE%
   pause
   exit /b 1
