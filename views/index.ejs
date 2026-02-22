@@ -3,249 +3,499 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>WhatsGPT — Assistente de IA no WhatsApp</title>
-  <link rel="stylesheet" href="/css/style.css">
+  <title>WhatsNain — Assistente de IA no WhatsApp</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <style>
-    .landing { font-family: 'DM Sans', system-ui, sans-serif; }
-    .landing .hero {
-      text-align: center;
-      padding: 4rem 1.5rem 3rem;
-      max-width: 720px;
-      margin: 0 auto;
+    *{box-sizing:border-box;margin:0;padding:0}
+    html{scroll-behavior:smooth}
+    body{
+      font-family:'Inter',system-ui,sans-serif;
+      background:#050a18;
+      color:#e2e8f0;
+      min-height:100vh;
+      overflow-x:hidden;
     }
-    .landing .hero h1 {
-      font-size: clamp(2rem, 5vw, 3rem);
-      font-weight: 700;
-      color: #f1f5f9;
-      margin: 0 0 1rem;
-      line-height: 1.2;
-      letter-spacing: -0.02em;
+
+    /* ── BG animated gradient blobs ── */
+    .bg-glow{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
+    .bg-glow .blob{position:absolute;border-radius:50%;filter:blur(120px);opacity:.35;animation:blobFloat 12s ease-in-out infinite alternate}
+    .bg-glow .blob.b1{width:500px;height:500px;background:radial-gradient(circle,#22c55e 0%,transparent 70%);top:-10%;left:-5%;animation-delay:0s}
+    .bg-glow .blob.b2{width:400px;height:400px;background:radial-gradient(circle,#3b82f6 0%,transparent 70%);bottom:10%;right:-8%;animation-delay:-4s}
+    .bg-glow .blob.b3{width:350px;height:350px;background:radial-gradient(circle,#a855f7 0%,transparent 70%);top:50%;left:40%;animation-delay:-8s}
+    @keyframes blobFloat{
+      0%{transform:translate(0,0) scale(1)}
+      33%{transform:translate(30px,-40px) scale(1.08)}
+      66%{transform:translate(-20px,30px) scale(0.95)}
+      100%{transform:translate(10px,-15px) scale(1.03)}
     }
-    .landing .hero .tagline {
-      font-size: 1.25rem;
-      color: #94a3b8;
-      margin: 0 0 2rem;
-      line-height: 1.5;
+
+    /* ── Grain overlay ── */
+    body::after{
+      content:'';position:fixed;inset:0;z-index:1;pointer-events:none;
+      background:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+      opacity:.5;
     }
-    .landing .hero .cta {
-      display: flex;
-      gap: 1rem;
-      justify-content: center;
-      flex-wrap: wrap;
+
+    .page-wrap{position:relative;z-index:2}
+
+    /* ── Nav ── */
+    .nav-top{
+      display:flex;justify-content:space-between;align-items:center;
+      max-width:1100px;margin:0 auto;padding:1.25rem 2rem;
     }
-    .landing .hero .cta a {
-      display: inline-block;
-      padding: 0.875rem 1.75rem;
-      border-radius: 10px;
-      font-weight: 600;
-      text-decoration: none;
-      transition: transform 0.15s, box-shadow 0.15s;
+    .nav-top .logo-link{
+      font-size:1.4rem;font-weight:800;color:#22c55e;text-decoration:none;
+      letter-spacing:-.02em;
     }
-    .landing .hero .cta .btn-primary {
-      background: #22c55e;
-      color: #0f172a;
+    .nav-top nav a{
+      margin-left:1.5rem;color:#94a3b8;text-decoration:none;font-weight:500;
+      font-size:.95rem;transition:color .2s;
     }
-    .landing .hero .cta .btn-primary:hover {
-      background: #16a34a;
-      transform: translateY(-1px);
-      box-shadow: 0 8px 24px rgba(34, 197, 94, 0.35);
+    .nav-top nav a:hover{color:#22c55e}
+
+    /* ── Hero ── */
+    .hero{
+      text-align:center;padding:6rem 2rem 4rem;max-width:820px;margin:0 auto;
+      position:relative;
     }
-    .landing .hero .cta .btn-outline {
-      background: transparent;
-      color: #22c55e;
-      border: 2px solid #22c55e;
+    .hero-badge{
+      display:inline-flex;align-items:center;gap:.5rem;
+      background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.25);
+      border-radius:999px;padding:.4rem 1rem;font-size:.8rem;font-weight:600;
+      color:#22c55e;margin-bottom:1.5rem;letter-spacing:.04em;
+      text-transform:uppercase;
     }
-    .landing .hero .cta .btn-outline:hover {
-      background: rgba(34, 197, 94, 0.1);
-      transform: translateY(-1px);
+    .hero-badge .pulse{
+      width:8px;height:8px;border-radius:50%;background:#22c55e;
+      animation:pulseGlow 2s ease-in-out infinite;
     }
-    .landing section {
-      max-width: 900px;
-      margin: 0 auto;
-      padding: 2.5rem 1.5rem;
+    @keyframes pulseGlow{0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(34,197,94,.5)}50%{opacity:.7;box-shadow:0 0 0 6px rgba(34,197,94,0)}}
+
+    /* ── Animated title ── */
+    .hero-title{
+      font-size:clamp(2.5rem,6vw,4rem);font-weight:900;line-height:1.1;
+      letter-spacing:-.03em;margin-bottom:1.5rem;min-height:1.2em;
     }
-    .landing section h2 {
-      font-size: 1.5rem;
-      font-weight: 600;
-      color: #f1f5f9;
-      margin: 0 0 1.25rem;
-      text-align: center;
+    .hero-title .brand{display:inline-block}
+    .hero-title .brand .letter{
+      display:inline-block;
+      opacity:0;
+      animation:letterDrop .5s cubic-bezier(.25,.46,.45,.94) forwards;
     }
-    .landing .intro {
-      font-size: 1.05rem;
-      color: #cbd5e1;
-      line-height: 1.7;
-      text-align: center;
+    .hero-title .rest{
+      background:linear-gradient(135deg,#e2e8f0 0%,#94a3b8 100%);
+      -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+      background-clip:text;
     }
-    .landing .features {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-      gap: 1.25rem;
-      margin-top: 2rem;
+    @keyframes letterDrop{
+      0%{opacity:0;transform:translateY(-60px) rotateX(90deg);filter:blur(4px)}
+      60%{opacity:1;transform:translateY(8px) rotateX(-5deg);filter:blur(0)}
+      80%{transform:translateY(-3px) rotateX(2deg)}
+      100%{opacity:1;transform:translateY(0) rotateX(0);filter:blur(0)}
     }
-    .landing .feature-card {
-      background: #1e293b;
-      border: 1px solid #334155;
-      border-radius: 14px;
-      padding: 1.5rem;
-      transition: border-color 0.2s, box-shadow 0.2s;
+    /* Re-drop loop */
+    .hero-title .brand.re-animate .letter{
+      animation:letterFallOut .4s cubic-bezier(.55,.06,.68,.19) forwards;
     }
-    .landing .feature-card:hover {
-      border-color: #22c55e40;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+    @keyframes letterFallOut{
+      0%{opacity:1;transform:translateY(0) rotateX(0)}
+      100%{opacity:0;transform:translateY(80px) rotateZ(15deg);filter:blur(3px)}
     }
-    .landing .feature-card .icon {
-      font-size: 1.75rem;
-      margin-bottom: 0.75rem;
+
+    .hero .tagline{
+      font-size:1.2rem;color:#94a3b8;line-height:1.7;max-width:620px;
+      margin:0 auto 2.5rem;
     }
-    .landing .feature-card h3 {
-      font-size: 1.1rem;
-      font-weight: 600;
-      color: #f1f5f9;
-      margin: 0 0 0.5rem;
+    .hero .cta{display:flex;gap:1rem;justify-content:center;flex-wrap:wrap}
+    .hero .cta a{
+      display:inline-flex;align-items:center;gap:.5rem;
+      padding:.9rem 2rem;border-radius:12px;font-weight:700;font-size:1rem;
+      text-decoration:none;transition:all .25s;position:relative;overflow:hidden;
     }
-    .landing .feature-card p {
-      font-size: 0.95rem;
-      color: #94a3b8;
-      margin: 0;
-      line-height: 1.5;
+    .cta .btn-primary{
+      background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;
+      box-shadow:0 4px 20px rgba(34,197,94,.3);
     }
-    .landing .benefits ul {
-      list-style: none;
-      padding: 0;
-      margin: 1.5rem 0 0;
-      max-width: 560px;
-      margin-left: auto;
-      margin-right: auto;
+    .cta .btn-primary:hover{
+      transform:translateY(-2px);box-shadow:0 8px 30px rgba(34,197,94,.45);
     }
-    .landing .benefits li {
-      display: flex;
-      align-items: flex-start;
-      gap: 0.75rem;
-      padding: 0.75rem 0;
-      border-bottom: 1px solid #334155;
-      color: #cbd5e1;
-      font-size: 1rem;
-      line-height: 1.5;
+    .cta .btn-primary::after{
+      content:'';position:absolute;inset:0;
+      background:linear-gradient(135deg,rgba(255,255,255,.15),transparent);
+      opacity:0;transition:opacity .3s;
     }
-    .landing .benefits li:last-child { border-bottom: none; }
-    .landing .benefits .check { color: #22c55e; font-size: 1.25rem; flex-shrink: 0; }
-    .landing .cta-section {
-      text-align: center;
-      padding: 3rem 1.5rem;
+    .cta .btn-primary:hover::after{opacity:1}
+    .cta .btn-outline{
+      background:rgba(255,255,255,.04);color:#22c55e;
+      border:1.5px solid rgba(34,197,94,.4);
+      backdrop-filter:blur(10px);
     }
-    .landing .cta-section p {
-      color: #94a3b8;
-      margin-bottom: 1.25rem;
+    .cta .btn-outline:hover{
+      background:rgba(34,197,94,.1);border-color:#22c55e;
+      transform:translateY(-2px);
     }
-    .landing .nav-top {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 1rem 1.5rem;
-      max-width: 900px;
-      margin: 0 auto;
-      border-bottom: 1px solid #334155;
+
+    /* ── Sections ── */
+    .section{max-width:1000px;margin:0 auto;padding:3rem 2rem}
+    .section-title{
+      font-size:1.65rem;font-weight:700;color:#f1f5f9;text-align:center;
+      margin-bottom:.5rem;
     }
-    .landing .nav-top .logo {
-      font-size: 1.35rem;
-      font-weight: 700;
-      color: #22c55e;
-      text-decoration: none;
+    .section-sub{
+      text-align:center;color:#64748b;font-size:.95rem;margin-bottom:2rem;
     }
-    .landing .nav-top nav a {
-      margin-left: 1.25rem;
-      color: #94a3b8;
-      text-decoration: none;
-      font-weight: 500;
+
+    /* ── Glass cards grid ── */
+    .features-grid{
+      display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
+      gap:1.25rem;margin-top:1rem;
     }
-    .landing .nav-top nav a:hover { color: #22c55e; }
+    .glass-card{
+      background:rgba(30,41,59,.5);
+      border:1px solid rgba(51,65,85,.6);
+      border-radius:16px;padding:1.75rem;
+      backdrop-filter:blur(12px);
+      transition:all .3s ease;position:relative;overflow:hidden;
+    }
+    .glass-card::before{
+      content:'';position:absolute;top:0;left:0;right:0;height:1px;
+      background:linear-gradient(90deg,transparent,rgba(255,255,255,.08),transparent);
+    }
+    .glass-card:hover{
+      border-color:rgba(34,197,94,.3);
+      transform:translateY(-4px);
+      box-shadow:0 12px 40px rgba(0,0,0,.3);
+    }
+    .glass-card .card-icon{
+      width:48px;height:48px;border-radius:12px;
+      display:flex;align-items:center;justify-content:center;
+      font-size:1.5rem;margin-bottom:1rem;
+    }
+    .glass-card .card-icon.green{background:rgba(34,197,94,.12)}
+    .glass-card .card-icon.blue{background:rgba(59,130,246,.12)}
+    .glass-card .card-icon.purple{background:rgba(168,85,247,.12)}
+    .glass-card .card-icon.amber{background:rgba(251,191,36,.12)}
+    .glass-card .card-icon.pink{background:rgba(236,72,153,.12)}
+    .glass-card .card-icon.cyan{background:rgba(6,182,212,.12)}
+    .glass-card h3{font-size:1.05rem;font-weight:700;color:#f1f5f9;margin-bottom:.5rem}
+    .glass-card p{font-size:.9rem;color:#94a3b8;line-height:1.6}
+
+    /* ── Steps ── */
+    .steps{max-width:640px;margin:0 auto}
+    .step{
+      display:flex;gap:1.25rem;padding:1.25rem 0;
+      border-bottom:1px solid rgba(51,65,85,.5);
+      align-items:flex-start;
+    }
+    .step:last-child{border-bottom:none}
+    .step-num{
+      width:36px;height:36px;border-radius:10px;flex-shrink:0;
+      display:flex;align-items:center;justify-content:center;
+      font-weight:800;font-size:.9rem;
+      background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;
+    }
+    .step-text{color:#cbd5e1;line-height:1.6;font-size:.95rem}
+    .step-text strong{color:#f1f5f9}
+
+    /* ── Checklist ── */
+    .checklist{list-style:none;max-width:600px;margin:0 auto}
+    .checklist li{
+      display:flex;align-items:flex-start;gap:.75rem;
+      padding:.85rem 0;border-bottom:1px solid rgba(51,65,85,.4);
+      color:#cbd5e1;font-size:.95rem;line-height:1.55;
+    }
+    .checklist li:last-child{border-bottom:none}
+    .checklist .ck{
+      flex-shrink:0;width:22px;height:22px;border-radius:6px;
+      display:flex;align-items:center;justify-content:center;
+      font-size:.7rem;font-weight:700;margin-top:2px;
+    }
+    .checklist .ck.green{background:rgba(34,197,94,.15);color:#22c55e}
+    .checklist .ck.blue{background:rgba(59,130,246,.15);color:#3b82f6}
+
+    /* ── Divider ── */
+    .divider{
+      max-width:1000px;margin:0 auto;height:1px;
+      background:linear-gradient(90deg,transparent,rgba(51,65,85,.7),transparent);
+    }
+
+    /* ── CTA bottom ── */
+    .cta-bottom{
+      text-align:center;padding:4rem 2rem 5rem;
+    }
+    .cta-bottom p{color:#64748b;margin-bottom:1.5rem;font-size:1.05rem}
+    .cta-bottom a{
+      display:inline-flex;align-items:center;gap:.5rem;
+      padding:1rem 2.5rem;border-radius:14px;font-weight:700;font-size:1.05rem;
+      text-decoration:none;
+      background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;
+      box-shadow:0 4px 24px rgba(34,197,94,.3);
+      transition:all .25s;
+    }
+    .cta-bottom a:hover{transform:translateY(-2px);box-shadow:0 8px 32px rgba(34,197,94,.45)}
+
+    /* ── Scroll reveal ── */
+    .reveal{opacity:0;transform:translateY(30px);transition:all .7s cubic-bezier(.16,1,.3,1)}
+    .reveal.visible{opacity:1;transform:translateY(0)}
+
+    /* ── Responsive ── */
+    @media(max-width:600px){
+      .nav-top{padding:1rem 1.25rem}
+      .hero{padding:4rem 1.25rem 3rem}
+      .section{padding:2rem 1.25rem}
+    }
   </style>
 </head>
-<body class="landing">
-  <header class="nav-top">
-    <a href="/" class="logo">WhatsGPT</a>
-    <% if (typeof user !== 'undefined' && user) { %>
-      <nav>
-        <a href="/config">Configuração</a>
-        <a href="/qrcode">QR Code</a>
-        <a href="/logout">Sair</a>
-      </nav>
-    <% } else { %>
-      <nav>
-        <a href="/login">Entrar</a>
-      </nav>
-    <% } %>
-  </header>
+<body>
+  <!-- Animated background -->
+  <div class="bg-glow">
+    <div class="blob b1"></div>
+    <div class="blob b2"></div>
+    <div class="blob b3"></div>
+  </div>
 
-  <main>
+  <div class="page-wrap">
+    <!-- Nav -->
+    <header class="nav-top">
+      <a href="/" class="logo-link">WhatsNain</a>
+      <% if (typeof user !== 'undefined' && user) { %>
+        <nav>
+          <a href="/config">Configuracao</a>
+          <a href="/qrcode">QR Code</a>
+          <a href="/logout">Sair</a>
+        </nav>
+      <% } else { %>
+        <nav><a href="/login">Entrar</a></nav>
+      <% } %>
+    </header>
+
+    <!-- Hero -->
     <section class="hero">
-      <h1>Assistente de IA no seu WhatsApp</h1>
-      <p class="tagline">Responde clientes e contatos 24h com GPT ou Grok. Configure o tom de voz, use suas URLs e arquivos como base de conhecimento e deixe a IA trabalhar por você.</p>
+      <div class="hero-badge"><span class="pulse"></span> Assistente IA para WhatsApp</div>
+      <h1 class="hero-title">
+        <span class="brand" id="brand-anim"></span><br>
+        <span class="rest">IA no seu WhatsApp com configuracao simples</span>
+      </h1>
+      <p class="tagline">Atenda clientes e contatos 24h com respostas automaticas. Conecte seu numero, escolha o modelo de IA, defina o estilo e publique em minutos.</p>
       <div class="cta">
         <% if (typeof user !== 'undefined' && user) { %>
           <a href="/config" class="btn-primary">Abrir painel</a>
           <a href="/qrcode" class="btn-outline">Conectar WhatsApp</a>
         <% } else { %>
-          <a href="/login" class="btn-primary">Começar agora</a>
+          <a href="/login" class="btn-primary">Comecar agora</a>
         <% } %>
       </div>
     </section>
 
-    <section>
-      <h2>O que é o WhatsGPT?</h2>
-      <p class="intro">
-        O WhatsGPT conecta seu número do WhatsApp a um assistente inteligente. Quem te manda mensagem recebe respostas automáticas geradas por IA (OpenAI GPT ou xAI Grok). Você define o perfil do bot, o que ele pode usar como referência (sites, PDFs, planilhas) e qual modelo usar — tudo pelo painel web.
-      </p>
-    </section>
+    <div class="divider"></div>
 
-    <section>
-      <h2>Recursos</h2>
-      <div class="features">
-        <div class="feature-card">
-          <div class="icon">💬</div>
-          <h3>Respostas automáticas</h3>
-          <p>O bot responde mensagens de texto, áudio (transcrição com Whisper) e imagens (visão com GPT).</p>
+    <!-- Resumo -->
+    <section class="section reveal">
+      <h2 class="section-title">Resumo rapido</h2>
+      <p class="section-sub">Tudo que voce consegue fazer com o WhatsNain</p>
+      <div class="features-grid">
+        <div class="glass-card">
+          <div class="card-icon green">📤</div>
+          <h3>Disparo em massa</h3>
+          <p>Envie texto, imagem, audio gravado ou video para varios contatos de uma vez.</p>
         </div>
-        <div class="feature-card">
-          <div class="icon">🧠</div>
-          <h3>GPT e Grok</h3>
-          <p>Escolha entre modelos OpenAI (ex.: GPT-3.5, GPT-4) ou xAI Grok. Troque quando quiser.</p>
+        <div class="glass-card">
+          <div class="card-icon blue">🤖</div>
+          <h3>Mensagem por IA</h3>
+          <p>No modo prompt, GPT/Grok gera a mensagem com preview antes do envio.</p>
         </div>
-        <div class="feature-card">
-          <div class="icon">📎</div>
-          <h3>Contexto personalizado</h3>
-          <p>Use URLs (o conteúdo é extraído) e arquivos (PDF, planilhas, CSV) para dar base ao assistente.</p>
+        <div class="glass-card">
+          <div class="card-icon purple">📇</div>
+          <h3>Gerenciar contatos</h3>
+          <p>Buscar, adicionar manualmente, importar do WhatsApp e limpar listas.</p>
         </div>
-        <div class="feature-card">
-          <div class="icon">⚙️</div>
-          <h3>Vários perfis</h3>
-          <p>Crie múltiplas configurações (prompt, modelo, links) e ative a que quiser para o número.</p>
+        <div class="glass-card">
+          <div class="card-icon amber">📱</div>
+          <h3>Gerar numeros</h3>
+          <p>Crie listas por pais, DDD e operadora para campanhas de marketing.</p>
+        </div>
+        <div class="glass-card">
+          <div class="card-icon pink">🛡️</div>
+          <h3>Anti-spam</h3>
+          <p>Varie mensagens e use intervalos automaticos para reduzir bloqueios.</p>
+        </div>
+        <div class="glass-card">
+          <div class="card-icon cyan">⏸️</div>
+          <h3>Controle de envio</h3>
+          <p>Pause ou finalize disparos em andamento sem reiniciar o sistema.</p>
         </div>
       </div>
     </section>
 
-    <section class="benefits">
-      <h2>Benefícios</h2>
-      <ul>
-        <li><span class="check">✓</span> <strong>Atendimento 24h</strong> — Respostas imediatas sem depender de horário.</li>
-        <li><span class="check">✓</span> <strong>Menos trabalho repetitivo</strong> — Dúvidas frequentes e pedidos simples resolvidos pela IA.</li>
-        <li><span class="check">✓</span> <strong>Tom e regras sob seu controle</strong> — Você define o prompt e as fontes de informação.</li>
-        <li><span class="check">✓</span> <strong>Um número, vários usuários</strong> — Cada conta pode conectar seu próprio WhatsApp e configurar seu bot.</li>
+    <div class="divider"></div>
+
+    <!-- O que e -->
+    <section class="section reveal">
+      <h2 class="section-title">O que e o WhatsNain?</h2>
+      <p style="text-align:center;color:#94a3b8;font-size:1.05rem;line-height:1.8;max-width:660px;margin:0 auto;">
+        O WhatsNain conecta seu numero do WhatsApp a um assistente inteligente. Quem te manda mensagem recebe respostas automaticas geradas por IA (OpenAI GPT ou xAI Grok). Voce define o perfil do bot, escolhe fontes de referencia (sites, PDFs e planilhas) e controla tudo em um painel web.
+      </p>
+    </section>
+
+    <div class="divider"></div>
+
+    <!-- Como configurar -->
+    <section class="section reveal">
+      <h2 class="section-title">Como configurar</h2>
+      <p class="section-sub">4 passos para comecar a atender</p>
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-text"><strong>Entre no painel</strong> — Faca login e abra Configuracao.</div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-text"><strong>Defina o comportamento</strong> — Escreva o prompt com tom, regras e objetivo.</div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-text"><strong>Adicione conhecimento</strong> — Inclua links e arquivos para a IA responder com contexto.</div>
+        </div>
+        <div class="step">
+          <div class="step-num">4</div>
+          <div class="step-text"><strong>Conecte o WhatsApp</strong> — Leia o QR Code e comece a atender automaticamente.</div>
+        </div>
+      </div>
+    </section>
+
+    <div class="divider"></div>
+
+    <!-- O que preencher -->
+    <section class="section reveal">
+      <h2 class="section-title">O que preencher</h2>
+      <p class="section-sub">Campos da configuracao do bot</p>
+      <ul class="checklist">
+        <li><span class="ck blue">N</span> <span><strong>Nome</strong> — Identifica o perfil (ex.: "Atendimento Loja").</span></li>
+        <li><span class="ck blue">P</span> <span><strong>Prompt do sistema</strong> — Define como a IA deve responder.</span></li>
+        <li><span class="ck blue">M</span> <span><strong>Modelo</strong> — Escolha GPT ou Grok conforme custo e qualidade.</span></li>
+        <li><span class="ck blue">I</span> <span><strong>Info adicional</strong> — Regras rapidas e dados importantes.</span></li>
+        <li><span class="ck blue">U</span> <span><strong>URLs e arquivos</strong> — Base de conhecimento do seu negocio.</span></li>
+        <li><span class="ck green">✓</span> <span><strong>Ativar</strong> — Apenas uma configuracao fica ativa por vez.</span></li>
       </ul>
     </section>
 
-    <section class="cta-section">
-      <p>Conecte seu WhatsApp, configure o assistente e comece a receber respostas automáticas.</p>
+    <div class="divider"></div>
+
+    <!-- Funcionalidades -->
+    <section class="section reveal">
+      <h2 class="section-title">Funcionalidades</h2>
+      <p class="section-sub">O que o bot faz por voce</p>
+      <div class="features-grid" style="grid-template-columns:repeat(auto-fit,minmax(220px,1fr))">
+        <div class="glass-card">
+          <div class="card-icon green">💬</div>
+          <h3>Respostas automaticas</h3>
+          <p>Texto, audio (Whisper) e imagens (visao GPT).</p>
+        </div>
+        <div class="glass-card">
+          <div class="card-icon blue">🧠</div>
+          <h3>GPT e Grok</h3>
+          <p>Troque de modelo a qualquer momento.</p>
+        </div>
+        <div class="glass-card">
+          <div class="card-icon purple">📎</div>
+          <h3>Contexto personalizado</h3>
+          <p>URLs, PDFs, planilhas e CSV.</p>
+        </div>
+        <div class="glass-card">
+          <div class="card-icon amber">⚙️</div>
+          <h3>Varios perfis</h3>
+          <p>Crie e ative o que quiser.</p>
+        </div>
+      </div>
+    </section>
+
+    <div class="divider"></div>
+
+    <!-- Beneficios -->
+    <section class="section reveal">
+      <h2 class="section-title">Beneficios</h2>
+      <ul class="checklist">
+        <li><span class="ck green">✓</span> <span><strong>Atendimento 24h</strong> — Respostas imediatas sem depender de horario.</span></li>
+        <li><span class="ck green">✓</span> <span><strong>Menos trabalho repetitivo</strong> — Duvidas frequentes resolvidas pela IA.</span></li>
+        <li><span class="ck green">✓</span> <span><strong>Tom sob seu controle</strong> — Voce define prompt e fontes.</span></li>
+        <li><span class="ck green">✓</span> <span><strong>Multi-usuario</strong> — Cada conta conecta seu proprio WhatsApp.</span></li>
+      </ul>
+    </section>
+
+    <!-- CTA final -->
+    <section class="cta-bottom reveal">
+      <p>Conecte o WhatsApp, ajuste e deixe o WhatsNain responder por voce.</p>
       <% if (typeof user !== 'undefined' && user) { %>
-        <a href="/config" class="btn btn-primary">Abrir painel</a>
+        <a href="/config">Abrir painel</a>
       <% } else { %>
-        <a href="/login" class="btn btn-primary">Entrar ou registrar</a>
+        <a href="/login">Entrar ou registrar</a>
       <% } %>
     </section>
-  </main>
+  </div>
+
+  <script>
+  (function(){
+    /* ── Letter animation for "WhatsNain" ── */
+    var brandName = 'WhatsNain';
+    var brandEl = document.getElementById('brand-anim');
+    if (!brandEl) return;
+
+    function createLetters() {
+      brandEl.innerHTML = '';
+      for (var i = 0; i < brandName.length; i++) {
+        var span = document.createElement('span');
+        span.className = 'letter';
+        span.textContent = brandName[i];
+        span.style.animationDelay = (i * 0.07) + 's';
+        /* Gradient color per letter */
+        var pct = (i / (brandName.length - 1)) * 100;
+        span.style.background = 'linear-gradient(135deg, #22c55e ' + Math.max(0, 50 - pct) + '%, #3b82f6 ' + (50 + pct) + '%)';
+        span.style.webkitBackgroundClip = 'text';
+        span.style.webkitTextFillColor = 'transparent';
+        span.style.backgroundClip = 'text';
+        brandEl.appendChild(span);
+      }
+    }
+
+    function animateCycle() {
+      /* Phase 1: letters fall out */
+      brandEl.classList.add('re-animate');
+      var letters = brandEl.querySelectorAll('.letter');
+      letters.forEach(function(l, i) {
+        l.style.animationDelay = (i * 0.05) + 's';
+      });
+
+      /* Phase 2: after falling, rebuild */
+      setTimeout(function() {
+        brandEl.classList.remove('re-animate');
+        createLetters(); /* re-creates with drop-in animation */
+      }, brandName.length * 50 + 500);
+    }
+
+    /* Initial build */
+    createLetters();
+
+    /* Loop: every 5 seconds, do the fall+rebuild cycle */
+    setInterval(animateCycle, 5000);
+
+    /* ── Scroll reveal ── */
+    var reveals = document.querySelectorAll('.reveal');
+    if ('IntersectionObserver' in window) {
+      var obs = new IntersectionObserver(function(entries) {
+        entries.forEach(function(e) {
+          if (e.isIntersecting) {
+            e.target.classList.add('visible');
+            obs.unobserve(e.target);
+          }
+        });
+      }, { threshold: 0.15 });
+      reveals.forEach(function(el) { obs.observe(el); });
+    } else {
+      reveals.forEach(function(el) { el.classList.add('visible'); });
+    }
+  })();
+  </script>
 </body>
 </html>

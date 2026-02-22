@@ -6,13 +6,9 @@ if (config.openaiApiKey) {
   openai = new OpenAI({ apiKey: config.openaiApiKey });
 }
 
-async function chat(systemContent, userMessage, model = 'gpt-4o', history = []) {
-  // Agente de automação deve ser tratado no whatsapp.js; se chegou aqui, usar modelo padrão para não quebrar a resposta
-  if (model === 'automation-agent') {
-    model = 'gpt-4o';
-  }
+async function chat(systemContent, userMessage, model = 'gpt-4o-mini', history = []) {
   if (model === 'grok-2' || model.startsWith('grok')) {
-    return chatGrok(systemContent, userMessage, model);
+    return chatGrok(systemContent, userMessage, model, history);
   }
   if (!openai) throw new Error('OPENAI_API_KEY não configurada');
   const messages = [{ role: 'system', content: systemContent }];
@@ -21,7 +17,7 @@ async function chat(systemContent, userMessage, model = 'gpt-4o', history = []) 
   }
   messages.push({ role: 'user', content: userMessage });
   const completion = await openai.chat.completions.create({
-    model: model.startsWith('gpt-') ? model : 'gpt-3.5-turbo',
+    model: model.startsWith('gpt-') ? model : 'gpt-4o-mini',
     messages,
     max_tokens: 1024,
   });
@@ -29,22 +25,50 @@ async function chat(systemContent, userMessage, model = 'gpt-4o', history = []) 
   return choice?.message?.content?.trim() || '';
 }
 
-async function chatWithImage(systemContent, userMessage, imageBuffer, model = 'gpt-4o') {
+/**
+ * Extrai informações da imagem via GPT (visão) para passar ao prompt.
+ * Retorna texto estruturado (ex.: dados do talão de luz, texto lido, números).
+ */
+async function extractImageInfo(imageBuffer, instruction) {
   if (!openai) throw new Error('OPENAI_API_KEY não configurada');
-  const isGrok = model === 'grok-2' || (typeof model === 'string' && model.startsWith('grok'));
-  const visionModel = isGrok ? 'gpt-4o' : (['gpt-4o', 'gpt-4-turbo', 'gpt-4-vision'].includes(model) ? model : 'gpt-4o');
-  const textForImage = (typeof userMessage === 'string' && userMessage.trim()) ? userMessage.trim() : 'Descreva o conteúdo desta imagem.';
   const base64 = imageBuffer.toString('base64');
+  const prompt = instruction || 'Extraia todas as informações desta imagem: texto legível, números, datas, valores, tabelas. OBRIGATÓRIO: identifique o consumo de cada mês (kWh) e calcule o CONSUMO MÉDIO MENSAL (kWh média); se houver só um mês, use esse valor. Anote claramente "Consumo médio mensal: X kWh" — esse valor será usado para o orçamento. Retorne de forma estruturada.';
   const messages = [
-    { role: 'system', content: systemContent },
+    { role: 'system', content: 'Você extrai informações de imagens. Retorne apenas o conteúdo extraído, de forma objetiva e estruturada, sem comentários adicionais.' },
     {
       role: 'user',
       content: [
-        { type: 'text', text: textForImage },
+        { type: 'text', text: prompt },
         { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${base64}` } },
       ],
     },
   ];
+  const completion = await openai.chat.completions.create({
+    model: 'gpt-4o-mini',
+    messages,
+    max_tokens: 2048,
+  });
+  const text = completion.choices?.[0]?.message?.content?.trim() || '';
+  return text;
+}
+
+async function chatWithImage(systemContent, userMessage, imageBuffer, model = 'gpt-4o-mini', history = []) {
+  if (!openai) throw new Error('OPENAI_API_KEY não configurada');
+  const isGrok = model === 'grok-2' || (typeof model === 'string' && model.startsWith('grok'));
+  const visionModel = isGrok ? 'gpt-4o-mini' : (['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-4-vision'].includes(model) ? model : 'gpt-4o-mini');
+  const textForImage = (typeof userMessage === 'string' && userMessage.trim()) ? userMessage.trim() : 'Descreva o conteúdo desta imagem.';
+  const base64 = imageBuffer.toString('base64');
+  const messages = [{ role: 'system', content: systemContent }];
+  for (const h of history) {
+    messages.push({ role: h.role === 'assistant' ? 'assistant' : 'user', content: h.content });
+  }
+  messages.push({
+    role: 'user',
+    content: [
+      { type: 'text', text: textForImage },
+      { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${base64}` } },
+    ],
+  });
   const completion = await openai.chat.completions.create({
     model: visionModel,
     messages,
@@ -124,12 +148,11 @@ async function transcribe(buffer, mimeType) {
 }
 
 function grokModelId(model) {
-  if (!model || model === 'grok-2') return 'grok-4';
-  // Modelos descontinuados pela xAI: usar grok-3
-  if (model === 'grok-2-1212') return 'grok-3';
+  if (!model || model === 'grok-2') return 'grok-3-mini';
+  if (model === 'grok-2-1212') return 'grok-3-mini';
   if (['grok-beta', 'grok-3', 'grok-3-mini', 'grok-4'].includes(model)) return model;
   if (model.startsWith('grok-')) return model;
-  return 'grok-4';
+  return 'grok-3-mini';
 }
 
 function extractGrokContent(content) {
@@ -141,16 +164,18 @@ function extractGrokContent(content) {
   return '';
 }
 
-async function chatGrok(systemContent, userMessage, model = 'grok-2') {
+async function chatGrok(systemContent, userMessage, model = 'grok-2', history = []) {
   const key = config.xaiApiKey;
   if (!key) throw new Error('XAI_API_KEY não configurada');
   const xaiModel = grokModelId(model);
+  const messages = [{ role: 'system', content: systemContent }];
+  for (const h of history) {
+    messages.push({ role: h.role === 'assistant' ? 'assistant' : 'user', content: h.content });
+  }
+  messages.push({ role: 'user', content: userMessage });
   const body = {
     model: xaiModel,
-    messages: [
-      { role: 'system', content: systemContent },
-      { role: 'user', content: userMessage },
-    ],
+    messages,
     max_tokens: 1024,
   };
   
@@ -175,10 +200,13 @@ async function chatGrok(systemContent, userMessage, model = 'grok-2') {
       if (errStr.includes('credits') || errStr.includes('spending limit')) {
         errMsg = 'Limite de créditos ou gastos da API Grok (xAI) atingido. Adicione créditos em x.ai ou altere o modelo para GPT na configuração do bot.';
       } else if (errStr.includes('does not exist') || errStr.includes('does not have access')) {
-        errMsg = 'Modelo Grok não disponível para sua conta. Na configuração do bot, troque para "grok-beta" ou "gpt-3.5-turbo". Ou confira em console.x.ai quais modelos seu time tem acesso.';
+        errMsg = 'Modelo Grok não disponível para sua conta. Na configuração do bot, troque para "grok-3-mini" ou "gpt-4o-mini". Ou confira em console.x.ai quais modelos seu time tem acesso.';
       } else if (j.error) errMsg = typeof j.error === 'string' ? j.error : (j.error?.message || text);
     } catch (_) {}
-    console.error('[xAI] Erro', res.status, errMsg);
+    if (res.status === 502 || res.status === 500 || res.status === 503 || (errMsg && (errMsg.trim().startsWith('<') || errMsg.length > 500))) {
+      errMsg = 'API Grok (xAI) temporariamente indisponível (erro ' + res.status + '). Tente novamente em alguns minutos ou altere para GPT na configuração do bot.';
+    }
+    console.error('[xAI] Erro', res.status, errMsg.length > 200 ? errMsg.slice(0, 200) + '...' : errMsg);
     throw new Error(errMsg);
   }
   let data;
@@ -546,10 +574,10 @@ async function collaborativeChat(systemContent, userMessage, maxRounds = 3) {
   
   // Adicionar modelos disponíveis
   if (config.openaiApiKey) {
-    models.push({ name: 'GPT-4', type: 'gpt-4o', handler: chat });
+    models.push({ name: 'GPT-4o mini', type: 'gpt-4o-mini', handler: chat });
   }
   if (config.xaiApiKey) {
-    models.push({ name: 'Grok', type: 'grok-4', handler: chatGrok });
+    models.push({ name: 'Grok 3 mini', type: 'grok-3-mini', handler: chatGrok });
   }
   
   // Se não tiver modelos suficientes, retornar erro
@@ -753,13 +781,101 @@ Consolide essas respostas em uma resposta final clara e completa para o usuário
   return finalResponse.trim();
 }
 
+/** Remove numeração do início de linhas (1. 2. 1) 2) etc) */
+function stripLineNumbering(line) {
+  return String(line).replace(/^\s*\d+[.)]\s*/, '').trim();
+}
+
+/** Variações simples sem API (fallback quando GPT falha) */
+function simpleVariations(text) {
+  if (!text || !String(text).trim()) return [text];
+  const t = String(text).trim();
+  const variations = [
+    t,
+    t.replace(/\.\s*$/, '!').replace(/!\s*$/, '?').replace(/\?\s*$/, '.') || t,
+    t.replace(/\bOi\b/gi, 'Olá').replace(/\bolá\b/gi, 'oi'),
+    t.replace(/\bvocê\b/gi, 'vc').replace(/\bvc\b/gi, 'você'),
+    t.replace(/\be\b/gi, ' e ').replace(/\s+/g, ' ').trim() || t,
+  ];
+  return [...new Set(variations)].filter(Boolean).slice(0, 5);
+}
+
+/** Gera variações leves de uma mensagem para evitar detecção de spam (usa sinônimos, pontuação) */
+/** @param {string} originalText - Texto original
+ *  @param {number} [count=5] - Quantidade de variações desejadas (uma por contato = diferente para cada msg)
+ */
+async function varyMessageForSpam(originalText, count = 5) {
+  if (!originalText || !String(originalText).trim()) return [originalText];
+  const trimmed = String(originalText).trim();
+  const BATCH_SIZE = 15; // variações por chamada GPT (evita prompts muito longos)
+  const allVariations = [];
+  const seen = new Set();
+
+  const parseLines = (result) => {
+    return (result || '')
+      .split(/\n/)
+      .map((l) => stripLineNumbering(l))
+      .filter((l) => l.length > 0);
+  };
+
+  const addUnique = (lines) => {
+    for (const line of lines) {
+      const norm = line.trim().toLowerCase();
+      if (norm && !seen.has(norm)) {
+        seen.add(norm);
+        allVariations.push(line.trim());
+      }
+    }
+  };
+
+  let remaining = Math.min(count, 100); // limite 100 variações
+  let attempt = 0;
+  const maxAttempts = Math.ceil(remaining / BATCH_SIZE) + 2;
+
+  while (allVariations.length < remaining && attempt < maxAttempts) {
+    const needed = Math.min(BATCH_SIZE, remaining - allVariations.length);
+    const prompt = `Gere exatamente ${needed} variações DIFERENTES desta mensagem, uma por linha. Mantenha o MESMO significado. Use sinônimos (ex: oi/olá, você/vc). Varie pontuação (. ! ?). Cada variação deve ser ÚNICA, sem repetir as anteriores. Sem explicação, sem numeração, só as ${needed} linhas:
+
+"${trimmed}"`;
+    try {
+      const result = await chat(
+        'Você é um revisor de texto. Retorne APENAS as variações pedidas, uma por linha, sem numeração ou explicação. Cada linha deve ser diferente.',
+        prompt,
+        'gpt-3.5-turbo'
+      );
+      const lines = parseLines(result);
+      addUnique(lines);
+      if (lines.length >= 2) {
+        // sucesso
+      }
+    } catch (e) {
+      console.error('[AI] varyMessageForSpam erro:', e.message);
+      if (allVariations.length === 0) return simpleVariations(trimmed);
+      break;
+    }
+    attempt++;
+  }
+
+  if (allVariations.length >= 1) return allVariations;
+  return simpleVariations(trimmed);
+}
+
+/** Gera uma única variação (para uso sob demanda quando precisar de mais) */
+async function generateOneVariation(originalText) {
+  const variations = await varyMessageForSpam(originalText, 1);
+  return (variations && variations[0]) || originalText;
+}
+
 module.exports = {
   chat,
   chatWithImage,
+  extractImageInfo,
   transcribe,
   chatGrok,
   generateImage,
   generatePDF,
   generateVideo,
   collaborativeChat,
+  varyMessageForSpam,
+  generateOneVariation,
 };

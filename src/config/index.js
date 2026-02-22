@@ -1,6 +1,13 @@
 require('dotenv').config({ path: require('path').resolve(__dirname, '../../.env') });
 
 const path = require('path');
+let appVersion = process.env.APP_VERSION || null;
+if (!appVersion) {
+  try {
+    const pkg = require(path.resolve(__dirname, '../../package.json'));
+    appVersion = (pkg && pkg.version) ? String(pkg.version) : '1.0.0';
+  } catch (_) { appVersion = '1.0.0'; }
+}
 const fs = require('fs');
 const os = require('os');
 // Usar o mesmo cache onde "npx puppeteer browsers install chrome" instala (evita erro no Cursor/sandbox)
@@ -76,6 +83,7 @@ function getAutomationConfig() {
 }
 
 module.exports = {
+  appVersion,
   port: process.env.PORT || 3000,
   sessionSecret: process.env.SESSION_SECRET || 'whatsgpt-secret-change-in-production',
   openaiApiKey: process.env.OPENAI_API_KEY || '',

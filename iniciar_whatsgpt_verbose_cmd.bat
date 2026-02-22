@@ -3,6 +3,8 @@ title WhatsGPT - Modo Verboso (todos os logs no CMD)
 cd /d "%~dp0"
 
 set VERBOSE=1
+set LOG_FULL_PROMPT=1
+set PROMPT_LOG_CHARS=8000
 echo ============================================
 echo   WhatsGPT - TODOS OS LOGS NO CMD
 echo ============================================

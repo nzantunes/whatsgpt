@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { getWhatsAppClient, getQr, getConnectionStatus, sessionId } = require('../services/whatsapp');
+const { getWhatsAppClient, getQr, getConnectionStatus, sessionId, requestQr } = require('../services/whatsapp');
 const { initMainModels, getMainModels } = require('../db/models/main');
 const { normalizePhone } = require('../db');
 
@@ -25,6 +25,16 @@ router.get('/api/status/:id?', (req, res) => {
   const id = req.params.id || (userId != null ? sessionId(userId) : null);
   const status = getConnectionStatus(userId, id);
   res.json(status);
+});
+
+router.post('/api/generate', async (req, res) => {
+  const userId = req.session?.user?.id;
+  try {
+    await requestQr(userId);
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
 });
 
 module.exports = router;

@@ -1,0 +1,3 @@
+# Ngrok desativado — o servidor usa BASE_URL do .env (localhost)
+# Para ativar de novo: descomente a linha abaixo e coloque a URL do ngrok
+# https://3626-2804-30c-2d3e-a700-7594-177c-74ec-6169.ngrok-free.app

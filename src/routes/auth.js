@@ -1,8 +1,11 @@
 const express = require('express');
 const bcrypt = require('bcrypt');
 const router = express.Router();
+const config = require('../config');
+const { loginLimiter } = require('../middleware/rateLimiter');
 const { getMainDb } = require('../db');
 const { defineUser, defineSession, getMainModels, initMainModels } = require('../db/models/main');
+const { disconnectUser } = require('../services/whatsapp');
 
 let User, Session;
 
@@ -17,10 +20,11 @@ async function ensureModels() {
 
 router.get('/login', async (req, res) => {
   await ensureModels();
-  res.render('login', { error: null });
+  const updated = req.query.updated === '1';
+  res.render('login', { error: null, updated });
 });
 
-router.post('/login', express.urlencoded({ extended: true }), async (req, res) => {
+router.post('/login', loginLimiter, express.urlencoded({ extended: true }), async (req, res) => {
   await ensureModels();
   const { username, password } = req.body || {};
   if (!username || !password) {
@@ -34,6 +38,7 @@ router.post('/login', express.urlencoded({ extended: true }), async (req, res) =
   if (!ok) return res.render('login', { error: 'Usuário ou senha inválidos' });
   req.session.user = { id: user.id, username: user.username };
   req.session.phone = null;
+  req.session.appVersion = config.appVersion;
   return res.redirect('/qrcode');
 });
 
@@ -51,10 +56,15 @@ router.post('/api/register', async (req, res) => {
   const user = await User.create({ username: name, passwordHash: hash });
   req.session.user = { id: user.id, username: user.username };
   req.session.phone = null;
+  req.session.appVersion = config.appVersion;
   return res.json({ ok: true, user: { id: user.id, username: user.username }, redirectTo: '/qrcode' });
 });
 
-router.get('/logout', (req, res) => {
+router.get('/logout', async (req, res) => {
+  const userId = req.session?.user?.id;
+  if (userId) {
+    try { await disconnectUser(userId); } catch (e) { console.error('[Logout] Erro ao desconectar WhatsApp:', e.message); }
+  }
   req.session.destroy(() => {});
   res.redirect('/login');
 });

@@ -1,9 +1,18 @@
+const config = require('../config');
+
 function requireAuth(req, res, next) {
   if (!req.session?.user) {
     if (req.xhr || req.headers.accept?.includes('application/json')) {
       return res.status(401).json({ error: 'Não autenticado' });
     }
     return res.redirect('/login');
+  }
+  if (req.session.appVersion !== config.appVersion) {
+    req.session.destroy(() => {});
+    if (req.xhr || req.headers.accept?.includes('application/json')) {
+      return res.status(401).json({ error: 'Aplicação foi atualizada. Faça login novamente.' });
+    }
+    return res.redirect('/login?updated=1');
   }
   next();
 }

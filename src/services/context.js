@@ -1,29 +1,75 @@
 const fs = require('fs');
 const path = require('path');
-const cheerio = require('cheerio');
 const pdf = require('pdf-parse');
 const XLSX = require('xlsx');
 const { parse } = require('csv-parse/sync');
+const { execFileSync } = require('child_process');
 const config = require('../config');
 
-// Garantir que fetch está disponível
-if (typeof globalThis.fetch === 'undefined') {
-  console.error('[Context] ❌ ERRO: fetch não está disponível! Node.js precisa ser versão 18+ ou instalar node-fetch');
+/**
+ * Extrai links usando Python (mais confiável para sites JS/React)
+ */
+async function fetchUrlWithPython(url) {
+  try {
+    console.log('[Contexto] 🐍 Usando Python para extrair links de:', url);
+    const scriptPath = path.join(__dirname, '..', '..', 'scripts', 'extract_links.py');
+    if (!fs.existsSync(scriptPath)) {
+      console.warn('[Contexto] Script Python não encontrado:', scriptPath);
+      return null;
+    }
+    const maxSubLinks = Math.max(0, Number(config.getAutomationConfig().maxLinksVarredura || 3));
+    const result = execFileSync('python', [scriptPath, url, '--max-sublinks', String(maxSubLinks)], {
+      encoding: 'utf8',
+      timeout: 60000,
+      maxBuffer: 10 * 1024 * 1024,
+    });
+    const data = JSON.parse(result.trim());
+    if (data.success) {
+      console.log('[Contexto] ✅ Python extraiu:', data.text_length, 'chars |', data.links_count, 'links |', (data.sub_links_count || 0), 'sublinks');
+      let output = data.text || '';
+      if (data.links && data.links.length > 0) {
+        output += '\n\n[LINKS ENCONTRADOS]\n' + data.links.slice(0, 100).join('\n');
+      }
+      if (data.sub_links && data.sub_links.length > 0) {
+        const okSublinks = data.sub_links.filter((item) => item && item.url);
+        output += '\n\n[SUBLINKS ENCONTRADOS]\n' + okSublinks.map((item) => item.url).join('\n');
+
+        const blocks = okSublinks
+          .map((item) => {
+            const preview = (item.text_preview || '').trim();
+            if (!preview) return '';
+            return `[SUBLINK: ${item.url}]\n${preview}`;
+          })
+          .filter(Boolean)
+          .slice(0, 10);
+
+        if (blocks.length > 0) {
+          output += '\n\n[CONTEÚDO DOS SUBLINKS]\n' + blocks.join('\n\n');
+        }
+      }
+      return output.slice(0, 50000);
+    } else {
+      console.warn('[Contexto] Python retornou erro:', data.error);
+      return null;
+    }
+  } catch (e) {
+    console.error('[Contexto] Erro ao executar Python:', e.message);
+    return null;
+  }
 }
 
 async function fetchUrlText(url) {
   try {
-    const res = await globalThis.fetch(url, {
-      headers: { 'User-Agent': 'WhatsGPT-Bot/1.0' },
-      signal: AbortSignal.timeout(10000),
-    });
-    if (!res.ok) return '';
-    const html = await res.text();
-    const $ = cheerio.load(html);
-    $('script, style, nav, footer').remove();
-    const text = $('body').text().replace(/\s+/g, ' ').trim();
-    return text.slice(0, 50000);
+    console.log('[Contexto] Extração de URL via Python (links + sublinks):', url);
+    const pythonResult = await fetchUrlWithPython(url);
+    if (pythonResult) {
+      console.log('[Contexto] ✅ Python retornou:', pythonResult.length, 'chars');
+      return pythonResult;
+    }
+    console.warn('[Contexto] ⚠️ Python não retornou conteúdo para URL:', url);
+    return '';
   } catch (e) {
+    console.error('[Contexto] ERRO ao buscar URL:', url, '| Erro:', e.message);
     return '';
   }
 }
@@ -34,11 +80,29 @@ async function fetchUrlsContent(urls) {
     const u = String(url).trim();
     if (!u) continue;
     const text = await fetchUrlText(u);
-    if (text) parts.push(`[URL: ${u}]\n${text}`);
+    if (text) {
+      const preview = text.slice(0, 200) + (text.length > 200 ? '...' : '');
+      console.log('[Contexto] URL extraida:', u, '| chars=', text.length, '| inicio:', preview);
+      parts.push(`[URL: ${u}]\n${text}`);
+    } else {
+      console.warn('[Contexto] URL sem conteudo ou falha na extracao:', u);
+    }
   }
   return parts.join('\n\n');
 }
 
+
+/** Extrai texto de um PDF a partir de um buffer (ex.: arquivo enviado pelo usuário no WhatsApp). */
+async function extractPdfFromBuffer(buffer) {
+  if (!buffer || !Buffer.isBuffer(buffer)) return '';
+  try {
+    const data = await pdf(buffer);
+    return (data.text || '').replace(/\s+/g, ' ').trim().slice(0, 100000);
+  } catch (e) {
+    console.error('[Context] Erro ao extrair texto do PDF (buffer):', e.message);
+    return '';
+  }
+}
 
 async function extractFileText(filePath, mimeType) {
   if (!fs.existsSync(filePath)) return '';
@@ -88,8 +152,8 @@ function getMaxSystemChars(model) {
 /** Para modelos com 8192 tokens, usar menos mensagens de histórico. */
 function getMaxHistoryLimit(model) {
   const m = (model || '').toLowerCase();
-  if (m.includes('gpt-3.5')) return 10;  // 20 mensagens para caber em 8k
-  return 50;
+  if (m.includes('gpt-3.5')) return 15;  // 30 mensagens para contexto
+  return 50;  // até 100 mensagens (user+assistant) para bom contexto
 }
 
 function truncate(str, max) {
@@ -99,79 +163,30 @@ function truncate(str, max) {
 
 async function buildSystemContent(cfg, models, model) {
   const maxChars = getMaxSystemChars(model);
-  
-  // Se for agente de automação, usar prompt específico
-  if (model === 'automation-agent') {
-    return `Você é um Agente de Automação do Cursor IDE. Sua função é executar tarefas de programação automaticamente.
+  if (!cfg) cfg = {};
+  const plainCfg = cfg && typeof cfg.get === 'function' ? cfg.get({ plain: true }) : cfg;
+  cfg = plainCfg || cfg;
 
-INSTRUÇÕES:
-- Todas as mensagens do usuário serão interpretadas como solicitações de automação
-- Você deve processar a tarefa e executá-la no Cursor IDE
-- Seja claro e direto nas respostas sobre o que está sendo executado
-- Informe o progresso da automação em tempo real
-
-CAPACIDADES:
-- Criar código Python, JavaScript, TypeScript, HTML, CSS, etc.
-- Gerar funções, classes, scripts
-- Criar arquivos com nomes específicos
-- Automatizar tarefas de programação
-- Executar código no terminal do Cursor
-
-EXEMPLOS DE TAREFAS:
-- "criar função Python que calcula fatorial"
-- "gerar código para API REST"
-- "criar arquivo calculadora.py com funções matemáticas"
-- "automatizar criação de script de backup"
-
-IMPORTANTE:
-- O sistema detecta automaticamente a tarefa e executa no Cursor
-- Você não precisa usar marcadores especiais
-- Apenas descreva a tarefa claramente`;
+  const basePrompt = (cfg.systemPrompt && String(cfg.systemPrompt).trim()) ? String(cfg.systemPrompt).trim() : 'Você é um assistente útil.';
+  if (cfg.id != null) {
+    console.log('[Contexto] Usando config salva id=', cfg.id, '| systemPrompt=', (cfg.systemPrompt || '').length, 'chars | modelo=', model);
   }
-  
-  const parts = [cfg.systemPrompt || 'Você é um assistente útil.'];
-  
-  // Adicionar instruções sobre geração de imagens e PDFs
-  const generationInstructions = `
-
-CAPACIDADES ESPECIAIS - Geração de Mídia e Automação:
-Você pode gerar imagens, PDFs e executar automações quando o usuário solicitar. Para isso, use os seguintes marcadores especiais na sua resposta:
-
-1. GERAR IMAGEM: Quando o usuário pedir para criar, gerar, desenhar, mostrar uma imagem, ilustração, foto ou qualquer conteúdo visual, use o marcador:
-   [GERAR_IMAGEM: descrição detalhada da imagem]
-   Exemplo: Se o usuário disser "mostre um gato fofo", responda normalmente e adicione [GERAR_IMAGEM: um gato fofo e adorável brincando]
-   NOTA: A geração de imagens usa DALL-E 3 da OpenAI. Funciona mesmo se você for um modelo Grok - o sistema usará a API OpenAI para gerar a imagem.
-
-2. GERAR PDF: Quando o usuário pedir para criar, gerar, fazer um documento, PDF, arquivo ou relatório, use o marcador:
-   [GERAR_PDF: conteúdo do documento |título: Título do Documento]
-   Exemplo: Se o usuário disser "crie um documento sobre Python", responda normalmente e adicione [GERAR_PDF: Introdução ao Python... |título: Guia de Python]
-   NOTA: A geração de PDF funciona localmente e está disponível para todos os modelos (GPT e Grok).
-
-3. AUTOMAÇÃO DO CURSOR: Quando o usuário pedir para criar código, automatizar tarefas, gerar scripts, criar funções, arquivos ou qualquer tarefa de programação que possa ser executada no Cursor IDE, sugira o uso da automação:
-   - Se o usuário pedir para "criar código", "gerar função", "automatizar", "criar arquivo Python", etc., sugira usar o comando de automação
-   - Exemplo: "Para criar esse código automaticamente no Cursor, você pode usar: /automate criar função Python que calcula fatorial"
-   - O sistema detecta automaticamente palavras-chave como: "automatizar", "criar código", "gerar código", "criar função", "criar arquivo", "executar no cursor"
-   - O usuário pode usar comandos como: /automate, /auto, ou simplesmente descrever a tarefa com palavras-chave
-   - Comandos diretos do agente: "abrir navegador" (abre o navegador), "pesquisar X" ou "buscar X" (abre o Google com a pesquisa), "sair" ou "exit" (encerra/comando de saída)
-   NOTA: A automação requer que o servidor de automação esteja rodando localmente. O sistema abrirá o Cursor IDE, gerará o código usando IA e criará o arquivo automaticamente. Comandos como abrir navegador e pesquisar são executados diretamente no PC.
-
-// 4. GERAR VÍDEO: Removido - funcionalidade desabilitada
-
-CONVERSA COLABORATIVA:
-Quando o usuário usar o comando /colaborar, /debate ou /discutir, ou quando fizer perguntas complexas, múltiplos modelos de IA (GPT e Grok) trabalharão juntos para encontrar a melhor solução.
-Cada modelo dará sua perspectiva, fará perguntas relevantes e colaborará para chegar a uma resposta completa e precisa.
-
-IMPORTANTE:
-- Use os marcadores APENAS quando o usuário claramente solicitar criação/geração de imagem, documento ou vídeo
-- Para automação, SUGIRA o uso ao invés de usar marcadores - o sistema detecta automaticamente
-- Sempre responda com texto normal primeiro, depois adicione o marcador ou sugestão
-- Para imagens, seja descritivo e detalhado no prompt (máximo 1000 caracteres)
-- Para PDFs, inclua o conteúdo completo do documento no marcador
-// - Para vídeos: funcionalidade removida
-- Os marcadores devem estar no final da sua resposta ou após o texto explicativo
-- Você (Grok) pode usar todos os marcadores normalmente - o sistema cuidará da geração técnica`;
-  
-  parts.push(generationInstructions);
+  const isGrok = model && (model === 'grok-2' || String(model).startsWith('grok'));
+  const grokReinforcement = isGrok
+    ? '\n\nVocê (Grok) DEVE responder estritamente conforme o texto que o dono definiu acima. Nada de desculpas genéricas, assistente ou ajuda — só o que está no bloco do dono.'
+    : '';
+  const noPerguntas = /n[aã]o\s+(fa[cç]a|fazer)\s+pergunta|sem\s+pergunta|nunca\s+pergunt/i.test(basePrompt);
+  const parts = [
+    '=== COMPORTAMENTO DEFINIDO PELO DONO DO BOT (responda SOMENTE isso) ===',
+    '',
+    basePrompt,
+    '',
+    '=== FIM DO TEXTO DO DONO ===',
+    '',
+    'REGRA: Sua resposta deve ser APENAS o texto acima. Não importa o que o usuário escrever ("Oi", "Quem é?", etc.) — responda SOMENTE com o que o dono definiu. Não diga "Peço desculpas", "Sou um assistente", "Posso ajudar". Nada além do comportamento definido.',
+    noPerguntas ? ' Não inclua perguntas na sua resposta.' : '',
+    grokReinforcement,
+  ].filter(Boolean);
   
   if (cfg.additionalInfo) parts.push('\nInformações adicionais:\n' + cfg.additionalInfo);
   let urlsContent = cfg.urlsContentCache;
@@ -194,6 +209,20 @@ IMPORTANTE:
       console.log('[Contexto] Config', cfg.id, '—', fileLog.length, 'arquivo(s) incluído(s) no contexto:', fileLog.join(', '));
     }
   }
+
+  // Instruções de mídia/automação em um bloco curto; não devem sobrescrever o prompt do dono
+  parts.push(`
+OPCIONAL (só use se o usuário pedir explicitamente): [GERAR_IMAGEM: descrição] para imagem; [GERAR_PDF: conteúdo |título: Título] para PDF; /colaborar para debate entre modelos. Caso contrário, ignore e responda só o texto do dono.`);
+
+  // Repetir o prompt do dono no final para o modelo priorizar
+  parts.push(`
+--- REGRA FINAL ---
+Sua resposta AGORA deve ser EXATAMENTE o que o dono definiu neste bloco (nada mais):
+"""
+${basePrompt}
+"""
+Se o usuário mandar "Oi", "Quem é?", ou qualquer mensagem, responda SOMENTE com o texto entre aspas acima. Não invente desculpas nem se descreva como IA ou assistente.`);
+
   const full = parts.join('\n');
   const result = truncate(full, maxChars);
   if (result.length < full.length) {
@@ -204,14 +233,92 @@ IMPORTANTE:
   return result;
 }
 
-const PREVIEW_CHARS = 500;
+/**
+ * Monta o prompt do sistema a partir da configuração do bot e envia ao modelo (GPT/Grok).
+ * A configuração do bot (prompt, infos, URLs, arquivos) é o que define a resposta do modelo.
+ */
+async function buildSystemContentForWhatsApp(cfg, models, model) {
+  if (!cfg) cfg = {};
+  const plainCfg = cfg && typeof cfg.get === 'function' ? cfg.get({ plain: true }) : cfg;
+  cfg = plainCfg || cfg;
+  const basePrompt = (cfg.systemPrompt != null && String(cfg.systemPrompt).trim()) ? String(cfg.systemPrompt).trim() : 'Você é um assistente útil.';
+  const maxChars = getMaxSystemChars(model);
+  const parts = [
+    basePrompt,
+  ];
+  if (cfg.additionalInfo && String(cfg.additionalInfo).trim()) {
+    parts.push('', 'Informações adicionais da config:', String(cfg.additionalInfo).trim());
+  }
+  let urlsContent = cfg.urlsContentCache;
+  if (!urlsContent && cfg.urls) {
+    const urls = cfg.urls.split('\n').filter(Boolean);
+    urlsContent = await fetchUrlsContent(urls);
+  }
+  if (urlsContent) {
+    console.log('[Contexto] URLs incluídas no prompt:', (urlsContent || '').length, 'chars');
+    console.log('[Contexto] Preview URLs:', String(urlsContent).slice(0, 300) + ((urlsContent || '').length > 300 ? '...' : ''));
+    parts.push('', 'Contexto das URLs:', urlsContent);
+  }
+  if (models && models.FileContext && cfg.id) {
+    const files = await models.FileContext.findAll({ where: { configId: cfg.id } });
+    console.log('[Contexto] Config id=', cfg.id, '| arquivos anexados na config:', files.length);
+    let tableIncluded = false;
+    for (const f of files) {
+      const textLen = (f.extractedText && String(f.extractedText).trim()) ? String(f.extractedText).trim().length : 0;
+      console.log('[Contexto] Arquivo:', f.filename, '| texto extraído:', textLen, 'chars');
+      if (!f.extractedText || !String(f.extractedText).trim()) {
+        console.warn('[Contexto] Arquivo da config SEM TEXTO extraído:', f.filename, '— o modelo NÃO verá este arquivo. Reenvie o PDF ou verifique o upload.');
+        continue;
+      }
+      const fn = (f.filename || '').toLowerCase();
+      const isPriceTable = fn.includes('tabela') || fn.includes('preço') || fn.includes('preco') || fn.includes('tabela-pre') || fn.includes('tabela_pre') || fn.includes('proposta') || fn.endsWith('.pdf') || fn.endsWith('.xlsx') || fn.endsWith('.xls');
+      if (isPriceTable) {
+        parts.push(
+          '',
+          '=== TABELA DE PREÇO DA CONFIGURAÇÃO DO BOT — O ORÇAMENTO DEVE USAR SOMENTE OS VALORES ABAIXO ===',
+          '',
+          f.extractedText,
+          '',
+          '=== FIM DA TABELA. Quantidade de módulos e valor total do orçamento DEVEM vir SOMENTE desta tabela acima. ==='
+        );
+        tableIncluded = true;
+        console.log('[Contexto] Tabela de preço ENVIADA ao prompt:', f.filename, '|', textLen, 'chars de conteúdo.');
+        const tablePreviewLen = Math.min(1500, textLen);
+        const tablePreview = String(f.extractedText).trim().slice(0, tablePreviewLen);
+        console.log('[Contexto] --- Valores extraídos da tabela (preview) ---');
+        console.log(tablePreview + (textLen > tablePreviewLen ? '\n... [truncado]' : ''));
+        console.log('[Contexto] --- Fim do preview da tabela ---');
+      } else {
+        parts.push('', '[Arquivo: ' + f.filename + ']', f.extractedText);
+      }
+    }
+    if (tableIncluded) console.log('[Contexto] OK: tabela da configuração do bot está no prompt (config id=', cfg.id, ').');
+    else if (files.length > 0) console.warn('[Contexto] AVISO: config id=', cfg.id, 'tem', files.length, 'arquivo(s) mas NENHUM com texto extraído ou reconhecido como tabela. O modelo NÃO usará a tabela.');
+    else console.warn('[Contexto] AVISO: config id=', cfg.id, 'não tem arquivos anexados. Adicione o PDF da tabela de preço na configuração.');
+  }
+  parts.push(
+    '',
+    '---'
+  );
+  const full = parts.join('\n');
+  const result = truncate(full, maxChars);
+  console.log('[Contexto] Config do bot passada ao prompt do modelo:', result.length, 'chars (config id=', cfg.id, ')');
+  return result;
+}
+
+const PREVIEW_CHARS = Number(process.env.PROMPT_LOG_CHARS || 2000);
+const LOG_FULL_PROMPT = String(process.env.LOG_FULL_PROMPT || '').trim() === '1';
 
 function logRequestToModel(model, systemContent, userMessage, history = [], source = 'IA') {
   console.log('---');
   console.log('[Log', source, '] Modelo:', model || '(default)');
   console.log('[Log', source, '] System (' + (systemContent || '').length + ' chars):');
-  const sysPreview = (systemContent || '').slice(0, PREVIEW_CHARS);
-  console.log(sysPreview + ((systemContent || '').length > PREVIEW_CHARS ? '\n... [truncado no log]' : ''));
+  if (LOG_FULL_PROMPT) {
+    console.log(systemContent || '');
+  } else {
+    const sysPreview = (systemContent || '').slice(0, PREVIEW_CHARS);
+    console.log(sysPreview + ((systemContent || '').length > PREVIEW_CHARS ? '\n... [truncado no log]' : ''));
+  }
   if (Array.isArray(history) && history.length > 0) {
     console.log('[Log', source, '] Histórico:', history.length, 'mensagem(ns)');
     history.forEach((h, i) => {
@@ -226,7 +333,7 @@ function logRequestToModel(model, systemContent, userMessage, history = [], sour
 }
 
 const MAX_HISTORY_MESSAGES = 50;
-const MAX_MESSAGE_CHARS = 1200;
+const MAX_MESSAGE_CHARS = 2000;
 
 async function getRecentHistory(Conversation, contactId, limit = MAX_HISTORY_MESSAGES) {
   if (!Conversation) return [];
@@ -236,7 +343,7 @@ async function getRecentHistory(Conversation, contactId, limit = MAX_HISTORY_MES
     limit: limit * 2,
   });
   const ordered = rows.reverse();
-  return ordered.slice(-limit * 2).map((r) => ({
+  return ordered.map((r) => ({
     role: r.role,
     content: (r.content || '').length > MAX_MESSAGE_CHARS
       ? (r.content || '').slice(0, MAX_MESSAGE_CHARS) + '...'
@@ -248,7 +355,9 @@ module.exports = {
   fetchUrlText,
   fetchUrlsContent,
   extractFileText,
+  extractPdfFromBuffer,
   buildSystemContent,
+  buildSystemContentForWhatsApp,
   getRecentHistory,
   getMaxHistoryLimit,
   logRequestToModel,

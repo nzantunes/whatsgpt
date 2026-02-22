@@ -3,14 +3,29 @@ const express = require('express');
 const session = require('express-session');
 const cookieParser = require('cookie-parser');
 const config = require('./config');
+const logger = require('./utils/logger');
+const helmet = require('helmet');
+const { apiLimiter } = require('./middleware/rateLimiter');
+const healthRouter = require('./routes/health');
 
 const authRoutes = require('./routes/auth');
+const passwordResetRoutes = require('./routes/passwordReset');
+const passwordResetQrcode = require('./routes/passwordResetQrcode');
+const passwordResetQr = require('./routes/passwordResetQr');
 const qrcodeRoutes = require('./routes/qrcode');
 const configRoutes = require('./routes/config');
 const apiRoutes = require('./routes/api');
 const { requireAuth, requirePhone, optionalAuth } = require('./middleware/auth');
 
 const app = express();
+
+// Headers de segurança
+app.use(helmet({
+  contentSecurityPolicy: false, // Desabilitar temporariamente
+}));
+
+// Rate limiting nas APIs
+app.use('/api', apiLimiter);
 
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, '../views'));
@@ -66,13 +81,19 @@ app.get('/', optionalAuth, (req, res) => {
   res.render('index', { user: res.locals.user });
 });
 
+// Health check e métricas
+app.use(healthRouter);
+
 app.use(authRoutes);
+app.use(passwordResetRoutes);
+app.use(passwordResetQrcode);
+app.use(passwordResetQr);
 app.use('/qrcode', requireAuth, qrcodeRoutes);
 app.use('/config', requireAuth, requirePhone, configRoutes);
 app.use('/api', apiRoutes);
 
 app.use((err, req, res, next) => {
-  console.error(err);
+  logger.error('Erro interno', { error: err.message, stack: err.stack });
   res.status(500).json({ error: err.message || 'Erro interno' });
 });
 

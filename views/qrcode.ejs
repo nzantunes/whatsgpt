@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Conectar WhatsApp — WhatsGPT</title>
+  <title>Conectar WhatsApp — WhatsNain</title>
   <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
   <div class="app">
     <header class="header">
-      <a href="/" class="logo">WhatsGPT</a>
+      <a href="/" class="logo">WhatsNain</a>
       <nav>
         <% if (typeof phone !== 'undefined' && phone) { %><a href="/config">Configuração</a><% } %>
         <a href="/qrcode">QR Code</a>
@@ -19,12 +19,19 @@
     <main class="main">
       <div class="card qrcode-card">
         <h1>Conectar WhatsApp</h1>
-        <p><strong>Obrigatório:</strong> Quem criou conta ou fez login precisa escanear o QR Code aqui para vincular o número ao usuário no banco de dados. Sem isso, a página Configuração não fica disponível. A configuração do bot é salva por número.</p>
-        <p>Escaneie o QR Code com o WhatsApp no seu celular (WhatsApp → Dispositivos vinculados → Vincular dispositivo).</p>
+        <p><strong>Um QR Code por usuário:</strong> Cada usuário cadastrado (cada conta) tem seu próprio QR Code. O QR que aparece aqui é exclusivo da sua conta — outro usuário logado em outra conta verá outro QR. Vincule o número ao fazer login nesta conta.</p>
+        <p><strong>Obrigatório:</strong> Escaneie o QR Code com o WhatsApp no celular (WhatsApp → Dispositivos vinculados → Vincular dispositivo) para liberar a página Configuração. A configuração do bot é salva por número.</p>
         <div id="qrcode-container">
           <img id="qrcode-img" alt="QR Code" style="display: none;">
           <canvas id="qrcode-canvas" style="display: none;"></canvas>
           <p id="qrcode-wait">Gerando QR Code...</p>
+          <p id="qrcode-read-hint" style="margin-top: 0.5rem; color: #94a3b8; font-size: 0.92rem;">
+            Após a leitura do QR Code, você será direcionado automaticamente. Aguarde um momento.
+          </p>
+          <div id="qrcode-redirect-loading" style="display: none; margin-top: 0.75rem; padding: 0.75rem; border-radius: 8px; background: #0f172a; color: #e2e8f0; border: 1px solid #334155;">
+            <strong>QR lido com sucesso.</strong><br>
+            Aguarde um momento... estamos finalizando a conexão e você será direcionado automaticamente.
+          </div>
           <div id="qrcode-ready" style="display: none;">
             <p id="qrcode-ready-msg">Conectado.</p>
             <p id="qrcode-status-connected" class="status"></p>
@@ -40,7 +47,13 @@
   </div>
   <script src="/socket.io/socket.io.js"></script>
   <script>
-    const socket = io();
+    // If `roomToken` was provided by server, connect socket with that room query
+    <% if (typeof roomToken !== 'undefined' && roomToken) { %>
+      const ROOM_TOKEN = '<%= roomToken %>';
+      const socket = io({ query: { room: ROOM_TOKEN } });
+    <% } else { %>
+      const socket = io();
+    <% } %>
     const img = document.getElementById('qrcode-img');
     const wait = document.getElementById('qrcode-wait');
     const ready = document.getElementById('qrcode-ready');
@@ -49,11 +62,21 @@
     const btnVincular = document.getElementById('btn-vincular');
     const btnDesconectar = document.getElementById('btn-desconectar');
     const vincularErro = document.getElementById('qrcode-vincular-erro');
+    const redirectLoading = document.getElementById('qrcode-redirect-loading');
+
+    function showRedirectLoading() {
+      if (redirectLoading) redirectLoading.style.display = 'block';
+    }
+
+    function hideRedirectLoading() {
+      if (redirectLoading) redirectLoading.style.display = 'none';
+    }
 
     function showConectado(msg, isSessaoSalva) {
       wait.style.display = 'none';
       document.getElementById('qrcode-error').style.display = 'none';
       ready.style.display = 'block';
+      if (isSessaoSalva) hideRedirectLoading();
       if (statusConnected) {
         if (isSessaoSalva) {
           statusConnected.innerHTML = (msg || '') + '<br><small>Conectado pela sessão salva (você não escaneou o QR agora). Use "Desconectar" para escanear outro número.</small>';
@@ -68,17 +91,55 @@
       if (!btnVincular) return;
       btnVincular.disabled = true;
       if (vincularErro) vincularErro.style.display = 'none';
+      iniciarTimerAtualizarPagina();
+      chamarSetPhone(0);
+    }
+
+    let timerRedirectMsg = null;
+
+    function chamarSetPhone(tentativa) {
+      const maxTentativas = 20;
+      const delayMs = 600;
+      showRedirectLoading();
       fetch('/api/set-phone', { method: 'POST', credentials: 'same-origin' })
         .then(r => r.json())
         .then((d) => {
-          btnVincular.disabled = false;
+          if (timerRedirectMsg) { clearTimeout(timerRedirectMsg); timerRedirectMsg = null; }
+          if (btnVincular) btnVincular.disabled = false;
           if (d.code === 'PHONE_TAKEN') {
+            hideRedirectLoading();
+            if (statusConnected) statusConnected.textContent = '';
             if (vincularErro) { vincularErro.textContent = d.error || 'Este número já está vinculado a outra conta.'; vincularErro.style.display = 'block'; }
             return;
           }
-          if (d.ok) window.location.href = '/config';
+          if (d.ok) {
+            window.location.href = '/config';
+            return;
+          }
+          if (d.error && d.error.includes('ainda não conectado') && tentativa < maxTentativas) {
+            setTimeout(function () { chamarSetPhone(tentativa + 1); }, delayMs);
+            return;
+          }
+          hideRedirectLoading();
+          if (d.error && tentativa >= maxTentativas - 1 && statusConnected) {
+            statusConnected.innerHTML = 'O celular conectou; o sistema pode demorar alguns segundos para detectar. Clique em <strong>Vincular à minha conta</strong> de novo ou atualize a página (F5) e tente novamente.';
+          }
         })
-        .catch(function () { btnVincular.disabled = false; });
+        .catch(function () {
+          if (timerRedirectMsg) { clearTimeout(timerRedirectMsg); timerRedirectMsg = null; }
+          if (btnVincular) btnVincular.disabled = false;
+          hideRedirectLoading();
+        });
+    }
+
+    function iniciarTimerAtualizarPagina() {
+      if (timerRedirectMsg) clearTimeout(timerRedirectMsg);
+      timerRedirectMsg = setTimeout(function () {
+        timerRedirectMsg = null;
+        if (statusConnected) {
+          statusConnected.innerHTML = 'Não foi possível redirecionar. <strong>Atualize a página (F5) e tente novamente.</strong>';
+        }
+      }, 5000);
     }
 
     if (btnVincular) btnVincular.addEventListener('click', vincularConta);
@@ -88,11 +149,10 @@
       if (data.error) {
         wait.style.display = 'none';
         errEl.style.display = 'block';
-        errEl.innerHTML = '<strong>Navegador não iniciou.</strong> ' + (data.message || '') +
-          '<br><br>Instale o Chromium e reinicie o app:<br>' +
-          '<code>sudo apt install chromium-browser</code><br><br>' +
-          'Ou defina no .env o caminho do Chrome/Chromium:<br>' +
-          '<code>CHROMIUM_PATH=/usr/bin/chromium</code>';
+        const msg = (data.message || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        errEl.innerHTML = '<strong>Navegador não iniciou / QR não apareceu a tempo.</strong><br><br>' + msg +
+          '<br><br><strong>Windows:</strong> Rode o servidor fora do Cursor (PowerShell: <code>cd pasta_do_projeto; npm start</code>). No .env: <code>CHROMIUM_PATH=C:/Program Files/Google/Chrome/Application/chrome.exe</code> e <code>USE_BUNDLED_CHROMIUM=false</code>.' +
+          '<br><br><strong>Linux:</strong> <code>sudo apt install chromium-browser</code> e no .env: <code>CHROMIUM_PATH=/usr/bin/chromium</code>. Atualize a página (F5) para tentar de novo.';
         return;
       }
       errEl.style.display = 'none';
@@ -101,17 +161,8 @@
         document.getElementById('qrcode-error').style.display = 'none';
         ready.style.display = 'block';
         showConectado('Conectado. Vinculando…', false);
-        fetch('/api/set-phone', { method: 'POST', credentials: 'same-origin' })
-          .then(r => r.json())
-          .then((d) => {
-            if (d.code === 'PHONE_TAKEN') {
-              if (statusConnected) statusConnected.textContent = '';
-              if (vincularErro) { vincularErro.textContent = d.error || ''; vincularErro.style.display = 'block'; }
-              return;
-            }
-            if (d.ok) window.location.href = '/config';
-          })
-          .catch(function () { if (statusConnected) statusConnected.textContent = ''; });
+        iniciarTimerAtualizarPagina();
+        chamarSetPhone(0);
         return;
       }
       if (data.url) {
@@ -122,18 +173,25 @@
     });
 
     socket.on('connected', (data) => {
-      showConectado('Número: ' + (data.phone || '') + ' — Vinculando…', false);
-      fetch('/api/set-phone', { method: 'POST', credentials: 'same-origin' })
-        .then(r => r.json())
-        .then((d) => {
-          if (d.code === 'PHONE_TAKEN') {
-            showConectado('');
-            if (vincularErro) { vincularErro.textContent = d.error || ''; vincularErro.style.display = 'block'; }
-            return;
-          }
-          if (d.ok) window.location.href = '/config';
-        })
-        .catch(function () { showConectado(''); });
+      showConectado('Número: ' + (data.phone ? data.phone.replace(/.(?=.{4})/g, '*') : '') + ' — Vinculando ao sistema…', false);
+      iniciarTimerAtualizarPagina();
+      chamarSetPhone(0);
+    });
+
+    socket.on('phone_taken', (data) => {
+      wait.style.display = 'none';
+      ready.style.display = 'none';
+      hideRedirectLoading();
+      if (timerRedirectMsg) { clearTimeout(timerRedirectMsg); timerRedirectMsg = null; }
+      const errEl = document.getElementById('qrcode-error');
+      errEl.style.display = 'block';
+      errEl.textContent = (data && data.error) || 'Este número já está vinculado a outra conta. Use outro número ou peça ao dono para desvincular.';
+      if (vincularErro) {
+        vincularErro.textContent = errEl.textContent;
+        vincularErro.style.display = 'block';
+      }
+      if (statusConnected) statusConnected.textContent = '';
+      if (btnVincular) btnVincular.disabled = false;
     });
 
     socket.on('auth_failure', () => { statusEl.textContent = 'Falha na autenticação.'; });
@@ -153,7 +211,15 @@
           return;
         }
         if (s.ready && s.phone) {
-          showConectado('Já conectado com o número ' + (s.phone || '') + ' (sessão salva).', true);
+          if (s.phoneTaken) {
+            wait.style.display = 'none';
+            hideRedirectLoading();
+            const errEl = document.getElementById('qrcode-error');
+            errEl.style.display = 'block';
+            errEl.textContent = 'Este número já está vinculado a outra conta. Use outro número ou peça ao dono para desvincular.';
+            return;
+          }
+          showConectado('Já conectado com o número ' + (s.phone ? s.phone.replace(/.(?=.{4})/g, '*') : '') + ' (sessão salva).', true);
           if (btnDesconectar) {
             btnDesconectar.onclick = function () {
               btnDesconectar.disabled = true;

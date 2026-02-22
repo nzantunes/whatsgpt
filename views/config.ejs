@@ -3,28 +3,68 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Configuração do Bot — WhatsGPT</title>
+  <title>Configuração — WhatsNain</title>
   <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .section-number {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 28px; height: 28px; border-radius: 50%;
+      background: #3b82f6; color: #fff; font-weight: 700; font-size: 0.85rem;
+      margin-right: 8px; flex-shrink: 0;
+    }
+    .section-header {
+      display: flex; align-items: center; margin-bottom: 4px;
+    }
+    .section-desc {
+      color: #94a3b8; font-size: 0.875rem; margin: 0 0 14px 0; line-height: 1.5;
+    }
+    .card + .card { margin-top: 18px; }
+  </style>
 </head>
 <body>
   <div class="app">
     <header class="header">
-      <a href="/" class="logo">WhatsGPT</a>
+      <a href="/" class="logo">WhatsNain</a>
       <nav>
-        <a href="/config">Configuração</a>
-        <a href="/qrcode">QR Code</a>
         <a href="/logout">Sair</a>
       </nav>
     </header>
     <main class="main">
+
+      <!-- ═══════════════════════════════════════════════════════ -->
+      <!-- SEÇÃO 1 — PERFIS DO BOT                                -->
+      <!-- ═══════════════════════════════════════════════════════ -->
       <div class="card">
-        <h1>Configuração do Bot</h1>
+        <div class="section-header"><span class="section-number">1</span><h1 style="margin: 0;">Perfis do Bot</h1></div>
+        <p class="section-desc">Crie e gerencie as configurações que o bot usa para responder no WhatsApp. Só um perfil fica ativo por vez.</p>
+
+        <div style="margin: 0 0 12px 0; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+          <button type="button" id="config-help-toggle" class="btn btn-secondary" aria-expanded="false" aria-controls="config-help-content">❓ Ajuda</button>
+          <span class="hint" style="font-size: 0.9rem;">Veja tudo que você pode fazer nesta tela.</span>
+        </div>
+        <div id="config-help-content" class="card" style="display: none; margin: 0 0 12px 0;">
+          <h2 style="margin-top: 0;">Tudo que você pode fazer nesta tela</h2>
+          <ul style="margin: 0; padding-left: 1.1rem; line-height: 1.7; color: #cbd5e1;">
+            <li><strong>Criar perfis de bot</strong> — monte várias configurações com nome, prompt, modelo, URLs e arquivos.</li>
+            <li><strong>Ativar/desativar perfil</strong> — só 1 perfil fica ativo por vez e responde no WhatsApp.</li>
+            <li><strong>Editar e excluir</strong> — ajuste texto, regras e base de conhecimento a qualquer momento.</li>
+            <li><strong>Base de conhecimento</strong> — use links e arquivos (PDF, XLSX, CSV) para respostas com contexto.</li>
+            <li><strong>Testar resposta</strong> — simule mensagens para validar antes de usar no WhatsApp.</li>
+            <li><strong>Enviar em massa</strong> — texto, imagem, áudio ou vídeo para vários contatos.</li>
+            <li><strong>Gerar mensagem por IA</strong> — GPT/Grok cria a mensagem e você vê preview antes.</li>
+            <li><strong>Gerenciar contatos</strong> — buscar, adicionar, importar do WhatsApp e limpar listas.</li>
+            <li><strong>Gerar números</strong> — crie listas por país/DDD/operadora para campanhas.</li>
+            <li><strong>Anti-spam</strong> — variar mensagens e usar intervalos para reduzir bloqueios.</li>
+            <li><strong>Pausar/finalizar envio</strong> — controle o disparo sem reiniciar o sistema.</li>
+            <li><strong>Apagar histórico</strong> — limpa mensagens e contexto para recomeçar do zero.</li>
+          </ul>
+        </div>
+
         <% if (!phone) { %>
           <p class="warning">Conecte seu WhatsApp em <a href="/qrcode">QR Code</a> para configurar o bot.</p>
         <% } else { %>
-          <p class="phone">Número conectado: <strong><%= phone %></strong></p>
-          <p class="warning">Para o bot responder no WhatsApp: (1) crie uma configuração, (2) clique em <strong>Ativar</strong> nela. Só uma configuração pode estar ativa por vez.</p>
-          <h2>Configurações (perfis)</h2>
+          <p class="phone">Número conectado: <strong><%= phone ? phone.replace(/.(?=.{4})/g, '*') : '' %></strong></p>
+          <p class="warning">Para o bot responder: (1) crie uma configuração, (2) clique em <strong>Ativar</strong>.</p>
           <ul id="config-list" class="config-list">
             <% configs.forEach(c => { %>
               <li data-id="<%= c.id %>">
@@ -32,14 +72,18 @@
                 <% if (c.isActive) { %><span class="badge active">Ativa</span><% } %>
                 <button type="button" class="btn btn-sm edit-config" data-id="<%= c.id %>">Editar</button>
                 <button type="button" class="btn btn-sm btn-danger delete-config" data-id="<%= c.id %>">Excluir</button>
-                <% if (!c.isActive) { %><button type="button" class="btn btn-sm activate-config" data-id="<%= c.id %>">Ativar</button><% } %>
+                <% if (c.isActive) { %><button type="button" class="btn btn-sm btn-secondary deactivate-config" data-id="<%= c.id %>">Desativar</button><% } else { %><button type="button" class="btn btn-sm activate-config" data-id="<%= c.id %>">Ativar</button><% } %>
               </li>
             <% }); %>
           </ul>
-          <button type="button" id="new-config" class="btn">Nova configuração</button>
+          <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px;">
+            <button type="button" id="new-config" class="btn">➕ Nova configuração</button>
+            <button type="button" id="clear-conversations-btn" class="btn btn-secondary" title="Apaga todo o histórico da conversa (mensagens + dados de PDF/foto em memória). O bot passará a responder sem contexto anterior.">🗑️ Apagar histórico</button>
+          </div>
         <% } %>
       </div>
 
+      <!-- Modal (igual) -->
       <div id="modal" class="modal" style="display: none;">
         <div class="modal-content card">
           <h2 id="modal-title">Editar configuração</h2>
@@ -49,15 +93,8 @@
             <label>Prompt do sistema <textarea name="systemPrompt" id="config-systemPrompt" rows="4"></textarea></label>
             <label>Modelo
               <select name="model" id="config-model">
-                <option value="gpt-3.5-turbo">gpt-3.5-turbo</option>
-                <option value="gpt-4">gpt-4</option>
-                <option value="gpt-4o">gpt-4o</option>
-                <option value="gpt-4-turbo">gpt-4-turbo</option>
-                <option value="grok-2">grok-2 (xAI, usa grok-4)</option>
-                <option value="grok-4">grok-4 (xAI)</option>
-                <option value="grok-2-1212">grok-2-1212 (descontinuado → usa grok-3)</option>
-                <option value="grok-beta">grok-beta (xAI)</option>
-                <option value="automation-agent">🤖 Agente de Automação (Cursor)</option>
+                <option value="gpt-4o-mini">GPT-4o mini (OpenAI)</option>
+                <option value="grok-3-mini">Grok 3 mini (xAI)</option>
               </select>
             </label>
             <label>Informações adicionais <textarea name="additionalInfo" id="config-additionalInfo" rows="2"></textarea></label>
@@ -73,40 +110,334 @@
         </div>
       </div>
 
-      <div class="card">
-        <h2>🤖 Agente de Automação</h2>
-        <p class="hint" style="margin-bottom: 10px;">Modelo de IA que interpreta o que o usuário quer e controla o agente (abrir navegador, pesquisar, YouTube, etc.).</p>
-        <label>Modelo para interpretar comandos
-          <select id="agent-model">
-            <option value="gpt-4o">GPT-4o (OpenAI)</option>
-            <option value="gpt-4">GPT-4 (OpenAI)</option>
-            <option value="gpt-3.5-turbo">GPT-3.5 Turbo (OpenAI)</option>
-            <option value="grok-4">Grok-4 (xAI)</option>
-            <option value="grok-2">Grok-2 (xAI)</option>
-            <option value="grok-3">Grok-3 (xAI)</option>
-            <option value="grok-beta">Grok Beta (xAI)</option>
-          </select>
-        </label>
-        <button type="button" id="save-agent-config" class="btn" style="margin-top: 8px;">Salvar modelo do agente</button>
-        <p id="agent-config-msg" class="hint" style="margin-top: 6px; font-size: 12px;"></p>
-      </div>
-
+      <!-- ═══════════════════════════════════════════════════════ -->
+      <!-- SEÇÃO 2 — TESTAR RESPOSTA                              -->
+      <!-- ═══════════════════════════════════════════════════════ -->
       <div class="card test-card">
-        <h2>Testar resposta (sem enviar no WhatsApp)</h2>
+        <div class="section-header"><span class="section-number">2</span><h2 style="margin: 0;">Testar Resposta</h2></div>
+        <p class="section-desc">Simule uma pergunta para ver como o bot responderia, sem enviar nada no WhatsApp.</p>
         <select id="test-config-id">
           <option value="">Configuração ativa (mesma do WhatsApp)</option>
           <% configs.forEach(c => { %>
             <option value="<%= c.id %>"><%= c.name %></option>
           <% }); %>
         </select>
-        <textarea id="test-message" placeholder="Digite uma mensagem de teste..." rows="2"></textarea>
-        <button type="button" id="test-gpt" class="btn">Enviar teste</button>
+        <textarea id="test-message" placeholder="Ex: Qual o horário de funcionamento?" rows="2"></textarea>
+        <button type="button" id="test-gpt" class="btn">▶ Enviar teste</button>
         <pre id="test-result" class="test-result"></pre>
       </div>
 
-      <!-- Seção de teste de vídeo removida - funcionalidade desabilitada -->
+      <!-- ═══════════════════════════════════════════════════════ -->
+      <!-- SEÇÃO 3 — COMPOR MENSAGEM                              -->
+      <!-- ═══════════════════════════════════════════════════════ -->
+      <div class="card send-message-card">
+        <div class="section-header"><span class="section-number">3</span><h2 style="margin: 0;">Compor Mensagem</h2></div>
+        <p class="section-desc">Monte a mensagem que será enviada aos contatos. Escolha texto, imagem, áudio ou vídeo.</p>
+
+        <p class="send-type-label" style="margin: 0 0 8px 0; color: #cbd5e1; font-weight: 600; font-size: 0.95rem;">Tipo de mídia</p>
+        <div class="send-type-tabs" role="group" aria-label="Tipo de mídia">
+          <label class="tab"><input type="radio" name="send-type" value="text" checked> Texto</label>
+          <label class="tab"><input type="radio" name="send-type" value="image"> Imagem</label>
+          <label class="tab"><input type="radio" name="send-type" value="audio"> Gravar áudio</label>
+          <label class="tab"><input type="radio" name="send-type" value="video"> Vídeo</label>
+        </div>
+
+        <!-- Texto -->
+        <div id="send-text-area" class="send-content">
+          <div class="send-mode-options" style="display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 10px; padding: 10px 12px; background: rgba(30, 41, 59, 0.6); border-radius: 8px; border: 1px solid #334155;">
+            <span style="color: #94a3b8; font-size: 0.875rem;">Modo:</span>
+            <label class="tab" style="margin: 0;"><input type="radio" name="send-text-mode" value="direct" checked> Escrever mensagem</label>
+            <label class="tab" style="margin: 0;"><input type="radio" name="send-text-mode" value="prompt"> Usar prompt (IA gera a mensagem)</label>
+            <span id="send-prompt-model-wrap" style="display: none; margin-left: 8px; padding-left: 12px; border-left: 1px solid #475569;">
+              <span style="color: #94a3b8; font-size: 0.875rem;">Modelo:</span>
+              <label class="tab" style="margin: 0 0 0 6px;"><input type="radio" name="send-prompt-model" value="gpt-4o-mini" checked> GPT-4o mini</label>
+              <label class="tab" style="margin: 0;"><input type="radio" name="send-prompt-model" value="grok-3-mini"> Grok 3 mini</label>
+            </span>
+          </div>
+          <label id="send-text-label"><span id="send-text-label-text">Mensagem / legenda (opcional para mídia)</span>
+            <textarea id="send-message-text" rows="3" placeholder="Digite a mensagem ou legenda..."></textarea>
+            <button type="button" id="send-prompt-clear-btn" class="btn btn-sm btn-secondary" style="margin-top: 6px;" title="Limpar o campo">Limpar</button>
+          </label>
+          <div id="send-prompt-preview-wrap" style="display: none; margin-top: 12px;">
+            <button type="button" id="send-prompt-preview-btn" class="btn btn-secondary" style="margin-bottom: 8px;">Gerar preview da mensagem</button>
+            <label style="display: block; margin-top: 8px;">Mensagem gerada (será enviada aos contatos):
+              <textarea id="send-prompt-preview-result" rows="4" readonly placeholder="Clique em Gerar preview..." style="margin-top: 6px; background: #1e293b; color: #e2e8f0;"></textarea>
+            </label>
+            <p id="send-prompt-preview-status" class="hint" style="margin-top: 6px; font-size: 12px;"></p>
+          </div>
+        </div>
+
+        <!-- Imagem -->
+        <div id="send-image-area" class="send-content send-media-area" style="display: none;">
+          <p class="hint">Selecione uma imagem.</p>
+          <input type="file" id="send-image-file" accept="image/*" class="send-file-input">
+          <label class="hint" style="display: block; margin-top: 10px;">Legenda (opcional) <input type="text" id="send-image-caption" placeholder="Texto da legenda..." style="width: 100%; margin-top: 4px; padding: 0.5rem 0.75rem; border-radius: 8px; border: 1px solid #475569; background: #0f172a; color: #e2e8f0;"></label>
+        </div>
+
+        <!-- Áudio -->
+        <div id="send-audio-area" class="send-content send-media-area" style="display: none;">
+          <p class="hint">Grave um áudio (será enviado como mensagem de voz).</p>
+          <div class="audio-record-controls">
+            <button type="button" id="record-audio-btn" class="btn">🎤 Gravar</button>
+            <button type="button" id="stop-audio-btn" class="btn btn-secondary" disabled>⏹ Parar</button>
+            <audio id="recorded-audio-preview" controls style="max-width: 100%; margin-top: 8px;"></audio>
+            <p id="audio-status" class="hint" style="margin-top: 6px; font-size: 12px;"></p>
+          </div>
+          <label class="hint" style="display: block; margin-top: 10px;">Legenda (opcional) <input type="text" id="send-audio-caption" placeholder="Texto da mensagem..." style="width: 100%; margin-top: 4px; padding: 0.5rem 0.75rem; border-radius: 8px; border: 1px solid #475569; background: #0f172a; color: #e2e8f0;"></label>
+        </div>
+
+        <!-- Vídeo -->
+        <div id="send-video-area" class="send-content send-media-area" style="display: none;">
+          <p class="hint">Selecione um vídeo.</p>
+          <input type="file" id="send-video-file" accept="video/*" class="send-file-input">
+          <label class="hint" style="display: block; margin-top: 10px;">Legenda (opcional) <input type="text" id="send-video-caption" placeholder="Texto da legenda..." style="width: 100%; margin-top: 4px; padding: 0.5rem 0.75rem; border-radius: 8px; border: 1px solid #475569; background: #0f172a; color: #e2e8f0;"></label>
+        </div>
+      </div>
+
+      <!-- ═══════════════════════════════════════════════════════ -->
+      <!-- SEÇÃO 4 — CONTATOS                                     -->
+      <!-- ═══════════════════════════════════════════════════════ -->
+      <div class="card send-message-card">
+        <div class="section-header"><span class="section-number">4</span><h2 style="margin: 0;">Contatos</h2></div>
+        <p class="section-desc">Selecione os contatos para o envio.</p>
+
+        <!-- Botões de ação dos contatos -->
+        <div style="margin-bottom: 10px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center;">
+          <button type="button" id="contacts-import-btn" class="btn btn-secondary" style="color: #22c55e;" title="Importa contatos do WhatsApp conectado">📥 Importar do WhatsApp</button>
+          <button type="button" id="contacts-paste-btn" class="btn btn-secondary" style="color: #38bdf8;" title="Adicionar contatos manualmente">➕ Adicionar contato</button>
+          <button type="button" id="contacts-clear-btn" class="btn btn-secondary" style="color: #fb923c;" title="Apaga todos os contatos salvos no banco de dados">🗑️ Limpar contatos do banco</button>
+          <span id="contacts-status" class="hint" style="margin-left: 4px;"></span>
+        </div>
+
+        <!-- Painel adicionar contato -->
+        <div id="contacts-paste-panel" style="display:none; margin-bottom: 14px; padding: 14px; background: #0f172a; border: 1px solid #38bdf8; border-radius: 10px;">
+          <!-- Abas -->
+          <div style="display: flex; gap: 0; margin-bottom: 14px; border-bottom: 1px solid #334155;">
+            <button type="button" id="add-contact-tab-single" style="padding: 6px 18px; font-size: 0.9rem; background: #38bdf8; color: #0f172a; border: none; border-radius: 8px 8px 0 0; font-weight: 600; cursor: pointer;">Um contato</button>
+            <button type="button" id="add-contact-tab-bulk" style="padding: 6px 18px; font-size: 0.9rem; background: transparent; color: #94a3b8; border: none; border-radius: 8px 8px 0 0; font-weight: 600; cursor: pointer;">Vários números</button>
+          </div>
+          <!-- Aba: Um contato -->
+          <div id="add-contact-single">
+            <div style="display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 10px;">
+              <div style="flex: 1; min-width: 160px;">
+                <label style="font-size: 0.82rem; color: #94a3b8; display: block; margin-bottom: 4px;">Nome (opcional)</label>
+                <input type="text" id="contact-single-name" placeholder="Ex: João Silva" style="width: 100%; padding: 7px 10px; border-radius: 8px; border: 1px solid #475569; background: #1e293b; color: #e2e8f0; font-size: 0.9rem;">
+              </div>
+              <div style="flex: 1; min-width: 160px;">
+                <label style="font-size: 0.82rem; color: #94a3b8; display: block; margin-bottom: 4px;">Número <span style="color:#fb923c">*</span></label>
+                <input type="text" id="contact-single-number" placeholder="5511999990000" style="width: 100%; padding: 7px 10px; border-radius: 8px; border: 1px solid #475569; background: #1e293b; color: #e2e8f0; font-size: 0.9rem; font-family: monospace;">
+              </div>
+            </div>
+            <div style="display: flex; gap: 8px; align-items: center;">
+              <button type="button" id="contact-single-save-btn" class="btn" style="font-size: 0.9rem;">➕ Adicionar contato</button>
+              <button type="button" id="contacts-paste-cancel-btn" class="btn btn-secondary" style="font-size: 0.9rem;">✕ Fechar</button>
+              <span id="contacts-paste-status" class="hint" style="font-size: 0.85rem;"></span>
+            </div>
+          </div>
+          <!-- Aba: Vários números -->
+          <div id="add-contact-bulk" style="display:none;">
+            <p style="margin: 0 0 8px 0; font-size: 0.85rem; color: #94a3b8;">Cole os números abaixo (um por linha, ou separados por vírgula/ponto-e-vírgula). Os números serão normalizados automaticamente.</p>
+            <textarea id="contacts-paste-input" rows="8" placeholder="5511999990000&#10;5521988880000&#10;5531977770000" style="width: 100%; font-size: 0.85rem; font-family: monospace; padding: 8px; border-radius: 8px; border: 1px solid #475569; background: #1e293b; color: #e2e8f0; resize: vertical;"></textarea>
+            <div style="margin-top: 8px; display: flex; gap: 8px; align-items: center;">
+              <button type="button" id="contacts-paste-save-btn" class="btn" style="font-size: 0.9rem;">💾 Salvar contatos</button>
+              <button type="button" id="contacts-paste-cancel-btn2" class="btn btn-secondary" style="font-size: 0.9rem;">✕ Fechar</button>
+              <span id="contacts-paste-status2" class="hint" style="font-size: 0.85rem;"></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Lista de contatos -->
+        <div style="margin-bottom: 14px; padding: 14px; background: rgba(15, 23, 42, 0.5); border-radius: 10px; border: 1px solid #334155;">
+          <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 10px;">
+            <input type="text" id="contacts-search" placeholder="Filtrar por nome ou número..." style="flex: 1; min-width: 140px; padding: 0.45rem 0.75rem; border-radius: 8px; border: 1px solid #475569; background: #0f172a; color: #e2e8f0; font-size: 0.9rem;">
+            <button type="button" id="contacts-select-all-btn" class="btn btn-sm btn-secondary">☑ Selecionar todos</button>
+            <button type="button" id="contacts-deselect-all-btn" class="btn btn-sm btn-secondary">☐ Desmarcar todos</button>
+          </div>
+          <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px;">
+            <button type="button" id="contacts-delete-selected-btn" class="btn btn-sm btn-secondary" style="color: #fb923c;">🗑️ Excluir selecionados</button>
+            <span id="contacts-count" class="hint" style="margin-left: 4px; font-size: 0.85rem;"></span>
+          </div>
+          <div id="contacts-list" style="max-height: 480px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px;"></div>
+        </div>
+      </div>
+
+      <!-- ═══════════════════════════════════════════════════════ -->
+      <!-- SEÇÃO 5 — ENVIAR                                       -->
+      <!-- ═══════════════════════════════════════════════════════ -->
+      <div class="card send-message-card">
+        <div class="section-header"><span class="section-number">5</span><h2 style="margin: 0;">Enviar</h2></div>
+        <p class="section-desc">Revise os números, ajuste opções anti-spam e dispare o envio.</p>
+
+        <div class="send-numbers-box">
+          <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 8px;">
+            <label style="margin: 0; flex: 1; min-width: 200px; font-weight: 600; color: #cbd5e1;">Números que vão receber a mensagem</label>
+            <button type="button" id="send-numbers-clear-btn" class="btn btn-secondary" title="Limpar a lista de números para enviar">Limpar</button>
+          </div>
+          <textarea id="send-numbers" rows="4" placeholder="Clique nos contatos (seção 4) ou cole números aqui, um por linha" style="margin-top: 8px; display: block; width: 100%;"></textarea>
+        </div>
+
+        <div style="margin-top: 12px; padding: 10px 12px; background: rgba(30, 41, 59, 0.6); border-radius: 8px; border: 1px solid #334155;">
+          <p style="margin: 0 0 8px 0; font-weight: 600; color: #cbd5e1; font-size: 0.9rem;">🛡️ Proteção anti-spam</p>
+          <label class="tab" style="margin: 0; display: block;"><input type="checkbox" id="send-vary-message" checked> Variar mensagens com GPT (cada contato recebe versão diferente)</label>
+          <label class="tab" style="margin: 4px 0 0 0; display: block;"><input type="checkbox" id="send-anti-spam-delays" checked> Intervalos variáveis (5–10s entre mensagens + pausa de 40s)</label>
+        </div>
+
+        <div class="form-actions" style="margin-top: 14px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px;">
+          <button type="button" id="send-message-btn" class="btn" style="font-size: 1rem; padding: 0.6rem 1.4rem;">🚀 Enviar para contatos</button>
+          <button type="button" id="send-pause-btn" class="btn btn-secondary" style="display: none;">⏸ Pausar</button>
+          <button type="button" id="send-finish-btn" class="btn btn-secondary" style="display: none; color: #f87171;">⏹ Finalizar</button>
+        </div>
+        <p id="send-message-result" class="hint" style="margin-top: 10px; font-size: 13px;"></p>
+
+        <div id="send-report-box" class="card" style="display: none; margin-top: 12px; padding: 12px; max-height: 280px; overflow: auto;">
+          <h4 style="margin: 0 0 8px 0;">Relatório de envio</h4>
+          <p id="send-report-summary" class="hint" style="margin: 0 0 8px 0;"></p>
+          <div id="send-report-sent" style="font-size: 12px; color: #86efac; margin-bottom: 6px;"></div>
+          <div id="send-report-failed" style="font-size: 12px; color: #fca5a5;"></div>
+        </div>
+
+        <!-- Enviados com sucesso — minimizado por padrão -->
+        <div id="sent-section-wrapper" style="margin-top: 12px;">
+          <button type="button" id="sent-toggle-btn" style="width: 100%; text-align: left; padding: 10px 14px; background: rgba(34, 197, 94, 0.1); border: 1px solid #22c55e33; border-radius: 10px; color: #86efac; font-size: 0.95rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: background 0.2s;">
+            <span id="sent-toggle-arrow" style="transition: transform 0.2s; display: inline-block;">▶</span>
+            <span>✓ Enviados com sucesso</span>
+            <span id="sent-toggle-count" class="hint" style="margin-left: auto; font-size: 0.8rem; color: #94a3b8;"></span>
+          </button>
+          <div id="sent-section-body" style="display: none; margin-top: 8px; padding: 14px; background: rgba(15, 23, 42, 0.5); border-radius: 10px; border: 1px solid #334155;">
+            <div style="margin-bottom: 10px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center;">
+              <button type="button" id="sent-load-btn" class="btn btn-sm btn-secondary" style="color: #22c55e;">🔄 Atualizar</button>
+              <button type="button" id="sent-clear-btn" class="btn btn-sm btn-secondary" style="color: #fb923c;">🗑️ Limpar tudo</button>
+              <span id="sent-status" class="hint" style="margin-left: 4px;"></span>
+            </div>
+            <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 10px;">
+              <input type="text" id="sent-search" placeholder="Filtrar por nome ou número..." style="flex: 1; min-width: 140px; padding: 0.45rem 0.75rem; border-radius: 8px; border: 1px solid #475569; background: #0f172a; color: #e2e8f0; font-size: 0.9rem;">
+              <button type="button" id="sent-select-all-btn" class="btn btn-sm btn-secondary">☑ Todos</button>
+              <button type="button" id="sent-deselect-all-btn" class="btn btn-sm btn-secondary">☐ Nenhum</button>
+            </div>
+            <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px;">
+              <button type="button" id="sent-add-to-send-btn" class="btn btn-sm btn-secondary" style="color: #38bdf8;">📤 Adicionar ao envio</button>
+              <button type="button" id="sent-delete-selected-btn" class="btn btn-sm btn-secondary" style="color: #fb923c;">🗑️ Excluir selecionados</button>
+              <button type="button" id="sent-pdf-btn" class="btn btn-sm btn-secondary" style="color: #a78bfa;">📄 Salvar PDF</button>
+              <span id="sent-count" class="hint" style="margin-left: 4px; font-size: 0.85rem;"></span>
+            </div>
+            <div id="sent-list" style="max-height: 480px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px;"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sub-seção: Gerador de números -->
+      <div class="card">
+        <div class="phone-generator-card" style="padding: 16px; background: #1e293b; border: 1px solid #334155; border-radius: 12px;">
+          <h3 style="margin: 0 0 4px 0; font-size: 1.1rem;">📱 Gerador de números</h3>
+          <p class="hint" style="margin: 0 0 14px 0; font-size: 0.85rem; color: #94a3b8;">Crie uma lista de números de celular para campanhas. Siga os 3 passos.</p>
+
+          <!-- PASSO 1 -->
+          <div style="margin-bottom: 14px; padding: 12px; background: rgba(15, 23, 42, 0.5); border-radius: 8px; border-left: 3px solid #22c55e;">
+            <p style="margin: 0 0 8px 0; font-weight: 600; color: #22c55e; font-size: 0.9rem;">Passo 1 — País e região</p>
+            <div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end;">
+              <label style="flex: 1; min-width: 140px;">
+                <span style="font-size: 0.85rem; color: #cbd5e1;">🌍 País</span>
+                <select id="phone-gen-country" style="width: 100%; margin-top: 4px;">
+                  <option value="55" selected>🇧🇷 Brasil (+55)</option>
+                  <option value="1">🇺🇸 EUA/Canadá (+1)</option>
+                  <option value="351">🇵🇹 Portugal (+351)</option>
+                  <option value="34">🇪🇸 Espanha (+34)</option>
+                  <option value="54">🇦🇷 Argentina (+54)</option>
+                  <option value="598">🇺🇾 Uruguai (+598)</option>
+                  <option value="595">🇵🇾 Paraguai (+595)</option>
+                  <option value="56">🇨🇱 Chile (+56)</option>
+                  <option value="57">🇨🇴 Colômbia (+57)</option>
+                  <option value="58">🇻🇪 Venezuela (+58)</option>
+                </select>
+              </label>
+              <label id="phone-gen-ddd-label" style="flex: 1; min-width: 140px;">
+                <span style="font-size: 0.85rem; color: #cbd5e1;">📍 Região (DDD)</span>
+                <select id="phone-gen-ddd" style="width: 100%; margin-top: 4px;">
+                  <option value="11">11 — São Paulo</option>
+                  <option value="21">21 — Rio de Janeiro</option>
+                  <option value="31">31 — Belo Horizonte</option>
+                  <option value="41">41 — Curitiba</option>
+                  <option value="47">47 — Joinville/SC</option>
+                  <option value="48">48 — Florianópolis</option>
+                  <option value="51">51 — Porto Alegre</option>
+                  <option value="61">61 — Brasília</option>
+                  <option value="71">71 — Salvador</option>
+                  <option value="81">81 — Recife</option>
+                  <option value="85">85 — Fortaleza</option>
+                  <option value="19">19 — Campinas</option>
+                  <option value="27">27 — Vitória</option>
+                  <option value="62">62 — Goiânia</option>
+                  <option value="67">67 — Campo Grande</option>
+                  <option value="79">79 — Aracaju</option>
+                </select>
+              </label>
+            </div>
+          </div>
+
+          <!-- PASSO 2 -->
+          <div style="margin-bottom: 14px; padding: 12px; background: rgba(15, 23, 42, 0.5); border-radius: 8px; border-left: 3px solid #38bdf8;">
+            <p style="margin: 0 0 8px 0; font-weight: 600; color: #38bdf8; font-size: 0.9rem;">Passo 2 — Operadora e quantidade</p>
+            <div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end;">
+              <label id="phone-gen-operator-label" style="flex: 1; min-width: 160px;">
+                <span style="font-size: 0.85rem; color: #cbd5e1;">📶 Operadora <span style="color: #64748b;">(opcional)</span></span>
+                <select id="phone-gen-operator" style="width: 100%; margin-top: 4px;">
+                  <option value="">Qualquer operadora</option>
+                  <optgroup label="Vivo">
+                    <option value="96">96 — Vivo</option>
+                    <option value="97">97 — Vivo</option>
+                    <option value="99">99 — Vivo</option>
+                  </optgroup>
+                  <optgroup label="TIM">
+                    <option value="98">98 — TIM</option>
+                    <option value="91">91 — TIM</option>
+                  </optgroup>
+                  <optgroup label="Claro">
+                    <option value="92">92 — Claro</option>
+                    <option value="93">93 — Claro</option>
+                    <option value="94">94 — Claro</option>
+                  </optgroup>
+                  <optgroup label="Oi">
+                    <option value="84">84 — Oi</option>
+                  </optgroup>
+                </select>
+              </label>
+              <label style="min-width: 100px; max-width: 140px;">
+                <span style="font-size: 0.85rem; color: #cbd5e1;">🔢 Quantidade</span>
+                <input type="number" id="phone-gen-qty" min="1" max="5000" value="10" style="width: 100%; margin-top: 4px;">
+              </label>
+            </div>
+          </div>
+
+          <!-- PASSO 3 -->
+          <div style="padding: 12px; background: rgba(15, 23, 42, 0.5); border-radius: 8px; border-left: 3px solid #fbbf24;">
+            <p style="margin: 0 0 8px 0; font-weight: 600; color: #fbbf24; font-size: 0.9rem;">Passo 3 — Gerar e usar</p>
+            <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center;">
+              <button type="button" id="phone-gen-btn" class="btn" style="font-size: 0.95rem;">▶ Gerar números</button>
+              <button type="button" id="phone-gen-copy" class="btn btn-sm btn-secondary">📋 Copiar</button>
+              <button type="button" id="phone-gen-to-send-only" class="btn btn-sm btn-secondary">📤 Colocar no envio</button>
+              <button type="button" id="phone-gen-save-to-mine" class="btn btn-sm btn-secondary">💾 Salvar nos contatos</button>
+            </div>
+            <textarea id="phone-gen-result" rows="5" readonly placeholder="Os números aparecem aqui após clicar em Gerar..." style="margin-top: 10px; width: 100%; font-size: 0.85rem;"></textarea>
+            <p class="hint" style="margin: 6px 0 0 0; font-size: 0.8rem; color: #64748b;">Exemplo: 5511999881234</p>
+          </div>
+        </div>
+      </div>
+
     </main>
   </div>
+  <script>
+    (function () {
+      const helpBtn = document.getElementById('config-help-toggle');
+      const helpContent = document.getElementById('config-help-content');
+      if (!helpBtn || !helpContent) return;
+      helpBtn.addEventListener('click', () => {
+        const isOpen = helpContent.style.display !== 'none';
+        helpContent.style.display = isOpen ? 'none' : 'block';
+        helpBtn.setAttribute('aria-expanded', String(!isOpen));
+        helpBtn.textContent = isOpen ? '❓ Ajuda' : '❌ Fechar ajuda';
+      });
+    })();
+  </script>
   <script src="/js/config.js"></script>
 </body>
 </html>

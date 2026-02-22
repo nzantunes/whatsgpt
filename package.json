@@ -22,16 +22,22 @@
     "dotenv": "^16.3.1",
     "ejs": "^3.1.9",
     "express": "^4.18.2",
+    "express-rate-limit": "^8.2.1",
     "express-session": "^1.17.3",
+    "ffmpeg-static": "^5.1.0",
+    "helmet": "^8.1.0",
+    "joi": "^18.0.2",
     "multer": "^1.4.5-lts.1",
     "openai": "^4.24.1",
     "pdf-parse": "^1.1.1",
     "pdfkit": "^0.17.2",
+    "puppeteer": "^24.37.5",
     "qrcode": "^1.5.3",
     "sequelize": "^6.35.2",
     "socket.io": "^4.7.2",
     "sqlite3": "^5.1.6",
     "whatsapp-web.js": "^1.23.0",
+    "winston": "^3.19.0",
     "xlsx": "^0.18.5"
   }
 }

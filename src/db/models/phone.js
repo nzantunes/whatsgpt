@@ -32,6 +32,13 @@ function defineFileContext(sequelize) {
   }, { timestamps: true, tableName: 'file_contexts' });
 }
 
+function defineSetting(sequelize) {
+  return sequelize.define('Setting', {
+    key: { type: DataTypes.STRING, primaryKey: true },
+    value: { type: DataTypes.TEXT, allowNull: true },
+  }, { timestamps: false, tableName: 'settings' });
+}
+
 const modelCache = new WeakMap();
 
 function initPhoneModels(sequelize) {
@@ -41,9 +48,10 @@ function initPhoneModels(sequelize) {
   const BotConfig = defineBotConfig(sequelize);
   const Conversation = defineConversation(sequelize);
   const FileContext = defineFileContext(sequelize);
+  const Setting = defineSetting(sequelize);
   FileContext.belongsTo(BotConfig, { foreignKey: 'configId' });
   return sequelize.sync().then(() => {
-    const models = { BotConfig, Conversation, FileContext };
+    const models = { BotConfig, Conversation, FileContext, Setting };
     modelCache.set(sequelize, models);
     return models;
   });
@@ -53,5 +61,6 @@ module.exports = {
   defineBotConfig,
   defineConversation,
   defineFileContext,
+  defineSetting,
   initPhoneModels,
 };

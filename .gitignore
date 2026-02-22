@@ -12,8 +12,16 @@ data/
 .puppeteer-cache/
 uploads/
 scripts/.camera_stream.pid
+scripts/output_docs/
+scripts/output_excel/
+
+# Python cache/bytecode
+__pycache__/
+*.py[cod]
+*$py.class
 
 # Logs e OS
+logs/
 *.log
 .DS_Store
 Thumbs.db
@@ -22,3 +30,8 @@ Thumbs.db
 .idea/
 .vscode/
 *.code-workspace
+
+# Local user run config (may contain secrets)
+.continue/config.json
+# Project config with secrets
+config.json
