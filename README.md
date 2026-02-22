@@ -48,7 +48,6 @@ WhatsGPT é uma plataforma web para conectar números do WhatsApp via QR Code e 
 - Leitura de PDF recebido no WhatsApp para contexto.
 
 ### 6) Geração de conteúdo
-- Geração de imagem (DALL·E) via API.
 - Geração de PDF via API.
 - Preview de mensagem gerada por IA (sem envio).
 
