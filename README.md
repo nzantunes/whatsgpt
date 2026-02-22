@@ -52,7 +52,7 @@ WhatsGPT é uma plataforma web para conectar números do WhatsApp via QR Code e 
 - Preview de mensagem gerada por IA (sem envio).
 
 ### 7) Disparo manual e campanhas
-- Envio para múltiplos contatos (texto, imagem, áudio, vídeo).
+- Envio para múltiplos contatos e gerador de números para envio em massa (texto, imagem, áudio, vídeo).
 - Geração opcional da mensagem por prompt no momento do envio.
 - Variação de mensagem e delays anti-spam.
 - Histórico de enviados com exportação em PDF.
