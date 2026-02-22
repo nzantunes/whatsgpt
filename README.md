@@ -69,12 +69,7 @@ WhatsGPT é uma plataforma web para conectar números do WhatsApp via QR Code e 
 - Verificação do número por mensagem `RESET <token>` no WhatsApp.
 - Redefinição de senha com reautenticação automática.
 
-### 10) Câmera e visualização externa
-- Endpoint para receber frames JPEG.
-- Endpoint para exibir último frame.
-- Página web de visualização “ao vivo” com auto-refresh.
-
-### 11) Observabilidade e operação
+### 10) Observabilidade e operação
 - Health check (`/health`) e métricas (`/metrics`).
 - Logs detalhados com modo verbose.
 - Controle de diretórios de dados e uploads via `.env`.
